@@ -51,6 +51,44 @@
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 16px;
+
+  /* Override Django CSS variables — tema escuro */
+  --primary: #1a3d6e;
+  --secondary: #0d1f3c;
+  --primary-fg: #ffffff;
+  --body-fg: #ffffff;
+  --body-bg: #0a1628;
+  --body-quiet-color: #8b9ab5;
+  --body-medium-color: #e0e6f0;
+  --body-loud-color: #ffffff;
+  --header-color: #ffffff;
+  --header-branding-color: #ffffff;
+  --header-bg: #0d1f3c;
+  --header-link-color: #ffffff;
+  --breadcrumbs-fg: #8b9ab5;
+  --breadcrumbs-link-fg: #ffffff;
+  --breadcrumbs-bg: #102542;
+  --link-fg: #ffffff;
+  --link-hover-color: #e0e6f0;
+  --link-selected-fg: #ffffff;
+  --hairline-color: #1e3350;
+  --border-color: #1e3350;
+  --error-fg: #f87171;
+  --darkened-bg: #0d1f3c;
+  --selected-bg: #1e3350;
+  --selected-row: rgba(255, 157, 0, 0.08);
+  --button-fg: #ffffff;
+  --button-bg: #1a3d6e;
+  --button-hover-bg: #234d8a;
+  --default-button-bg: #1a3d6e;
+  --default-button-hover-bg: #234d8a;
+  --close-button-bg: #102542;
+  --close-button-hover-bg: #1e3350;
+  --delete-button-bg: #dc2626;
+  --delete-button-hover-bg: #b91c1c;
+  --object-tools-fg: #ffffff;
+  --object-tools-bg: #1a3d6e;
+  --object-tools-hover-bg: #234d8a;
 }
 
 /* Base */
@@ -62,10 +100,14 @@ html, body {
 }
 
 a:link, a:visited {
-  color: var(--accent-orange);
+  color: var(--text-primary);
+  text-decoration: none;
   transition: color 0.2s;
 }
-a:hover { color: #ffb84d; }
+a:hover {
+  color: var(--text-secondary);
+  text-decoration: none;
+}
 
 /* Cabeçalho / Header */
 #header {
@@ -113,11 +155,11 @@ a:hover { color: #ffb84d; }
   color: var(--text-secondary);
 }
 #user-tools a {
-  color: var(--accent-orange);
+  color: var(--text-primary);
   border-bottom: none;
 }
 #user-tools a:hover {
-  color: #ffb84d;
+  color: var(--text-secondary);
 }
 
 /* Conteúdo principal */
@@ -143,34 +185,38 @@ div.breadcrumbs {
   font-size: 13px;
 }
 div.breadcrumbs a {
-  color: var(--accent-orange);
+  color: var(--text-primary);
 }
 
 /* Módulos / Cards */
 .module {
-  background: var(--bg-card);
+  background: linear-gradient(145deg, var(--bg-card), var(--bg-surface));
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  margin-bottom: 20px;
-  padding: 20px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  margin-bottom: 24px;
+  padding: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-.module h2, .module caption {
+.module h2 {
   font-family: var(--font-display);
   font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
   background: transparent;
-  padding: 0 0 12px 0;
-  margin: 0 0 12px 0;
-  border-bottom: 1px solid var(--border-color);
+  padding: 0 0 12px 12px;
+  margin: 0 0 16px 0;
+  border-left: 3px solid var(--accent-orange);
 }
 
 .module caption {
-  padding: 12px 16px;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: left;
+  padding: 14px 16px;
   margin: 0;
-  border-bottom: 1px solid var(--border-color);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
@@ -206,7 +252,7 @@ tr:hover td {
 
 /* Botões */
 .button, input[type=submit], input[type=button], .submit-row input, a.button {
-  background: var(--accent-blue);
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-blue-hover));
   color: #fff;
   font-family: var(--font-body);
   font-size: 13px;
@@ -215,21 +261,26 @@ tr:hover td {
   border: none;
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
   text-decoration: none;
+  box-shadow: 0 2px 8px rgba(26, 61, 110, 0.3);
 }
 
 .button:hover, input[type=submit]:hover, input[type=button]:hover, .submit-row input:hover, a.button:hover {
-  background: var(--accent-blue-hover);
+  background: linear-gradient(135deg, var(--accent-blue-hover), #2a5a9e);
+  box-shadow: 0 4px 16px rgba(26, 61, 110, 0.5);
+  transform: translateY(-1px);
 }
 
 .button.default, input[type=submit].default, .submit-row input.default {
-  background: var(--accent-blue);
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-blue-hover));
   font-weight: 700;
 }
 
 .button.default:hover, input[type=submit].default:hover {
-  background: var(--accent-blue-hover);
+  background: linear-gradient(135deg, var(--accent-blue-hover), #2a5a9e);
+  box-shadow: 0 4px 16px rgba(26, 61, 110, 0.5);
+  transform: translateY(-1px);
 }
 
 /* Botão deletar / ações perigosas */
@@ -249,6 +300,7 @@ tr:hover td {
 .form-row {
   border-bottom: 1px solid var(--border-color);
   padding: 12px 0;
+  overflow: visible;
 }
 
 label {
@@ -265,6 +317,8 @@ input, textarea, select {
   font-family: var(--font-body);
   font-size: 13px;
   padding: 8px 12px;
+  height: auto;
+  min-height: 36px;
   transition: border-color 0.2s;
 }
 
@@ -291,9 +345,9 @@ input:focus, textarea:focus, select:focus {
   font-weight: 600;
   color: var(--text-primary);
   background: transparent;
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 10px;
-  margin-bottom: 10px;
+  padding: 0 0 12px 10px;
+  margin: 0 0 12px 0;
+  border-left: 3px solid var(--accent-orange);
 }
 
 #changelist-filter li {
@@ -307,7 +361,7 @@ input:focus, textarea:focus, select:focus {
 }
 
 #changelist-filter li.selected a {
-  color: var(--accent-orange);
+  color: var(--text-primary);
   font-weight: 600;
 }
 
@@ -318,7 +372,7 @@ input:focus, textarea:focus, select:focus {
   padding: 15px 0;
 }
 .paginator a {
-  color: var(--accent-orange);
+  color: var(--text-primary);
 }
 .paginator .this-page {
   background: var(--accent-blue);
@@ -343,7 +397,7 @@ input:focus, textarea:focus, select:focus {
 }
 
 .dashboard .module table td a {
-  color: var(--accent-orange);
+  color: var(--text-primary);
   font-weight: 500;
 }
 
@@ -492,12 +546,13 @@ input:focus, textarea:focus, select:focus {
 .admin-sidebar__logo {
   display: flex;
   align-items: center;
+  justify-content: center;
   padding: 20px 16px;
   border-bottom: 1px solid var(--border-color);
 }
 
 .admin-sidebar__logo-img {
-  height: 36px;
+  height: 80px;
   width: auto;
 }
 
@@ -509,125 +564,77 @@ input:focus, textarea:focus, select:focus {
 .admin-sidebar__nav ul {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 10px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
-/* Item normal (Visão Geral, Log) */
+/* ── Card item ── */
 .admin-nav-item a {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-  border-radius: 8px;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   color: var(--text-secondary);
-  font-size: 13px;
   text-decoration: none;
-  transition: background 0.15s, color 0.15s;
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
 }
 
 .admin-nav-item a:hover {
-  background: var(--bg-card);
-  color: var(--text-primary);
+  border-color: var(--accent-blue);
 }
 
 .admin-nav-item.active a {
-  background: var(--accent-blue);
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-blue-hover));
   color: #fff;
   font-weight: 600;
+  border-color: transparent;
+  box-shadow: 0 2px 12px rgba(26, 61, 110, 0.4);
 }
 
-.admin-nav-item i {
-  width: 16px;
+.admin-nav-item .typing-nav i {
+  font-size: 26px;
+  width: 26px;
   text-align: center;
+  transition: transform 0.2s ease;
+}
+
+.admin-nav-item .typing-nav:hover i {
+  transform: scale(1.15);
+}
+
+.admin-nav-item .typing-nav .nav-text {
+  display: block;
+  font-family: var(--font-body);
   font-size: 13px;
-  flex-shrink: 0;
-}
-
-/* Parent com submenu */
-.admin-nav-parent {
-  overflow: hidden;
-}
-
-.admin-nav-toggle {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-  border-radius: 8px;
-  color: var(--text-secondary);
-  font-size: 13px;
-  text-decoration: none;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-
-.admin-nav-toggle:hover {
-  background: var(--bg-card);
-  color: var(--text-primary);
-}
-
-.admin-nav-toggle i:first-child {
-  width: 16px;
+  font-weight: 500;
   text-align: center;
-  font-size: 13px;
-  flex-shrink: 0;
+  line-height: 1.2;
 }
 
-.admin-nav-arrow {
-  margin-left: auto;
-  font-size: 11px !important;
-  transition: transform 0.25s ease;
+.admin-nav-item .typing-nav .nav-text.typing::after {
+  content: '';
+  display: inline-block;
+  width: 2px;
+  height: 14px;
+  background: var(--accent-orange);
+  margin-left: 2px;
+  animation: cursor-blink 0.7s step-end infinite;
+  vertical-align: text-bottom;
 }
 
-.admin-nav-parent.expanded .admin-nav-arrow {
-  transform: rotate(180deg);
+.admin-nav-item.active .typing-nav .nav-text.typing::after {
+  display: none;
 }
 
-.admin-nav-parent.active > .admin-nav-toggle {
-  background: var(--accent-blue);
-  color: #fff;
-  font-weight: 600;
-}
-
-/* Submenu */
-.admin-nav-submenu {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.3s ease;
-  padding-left: 26px;
-}
-
-.admin-nav-parent.expanded .admin-nav-submenu {
-  max-height: 200px;
-}
-
-.admin-nav-submenu li a {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 6px;
-  color: var(--text-muted);
-  font-size: 12px;
-  text-decoration: none;
-  transition: background 0.15s, color 0.15s;
-}
-
-.admin-nav-submenu li a:hover {
-  background: rgba(255,255,255,0.04);
-  color: var(--text-primary);
-}
-
-.admin-nav-submenu li.active a {
-  color: var(--accent-orange);
-  font-weight: 600;
-}
-
-.admin-nav-submenu li a i {
-  width: 14px;
-  text-align: center;
-  font-size: 11px;
-  flex-shrink: 0;
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 
 /* Divider */
@@ -845,4 +852,9 @@ body:not(.popup) #header {
   .admin-content {
     padding: 16px;
   }
+}
+
+/* Remove todo sublinhado do admin */
+* {
+  text-decoration: none !important;
 }

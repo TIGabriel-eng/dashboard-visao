@@ -11,3 +11,4 @@ dj-database-url
 psycopg2-binary
 whitenoise
 gunicorn==23.0.0
+djangorestframework
