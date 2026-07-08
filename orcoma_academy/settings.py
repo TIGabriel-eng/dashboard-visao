@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/6.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
-
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -20,12 +20,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-zwewcoij27#ftbd2ds7l_=p8@#ky*rqcd$&_h5w*c2^xh(=9y2'
-
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-zwewcoij27#ftbd2ds7l_=p8@#ky*rqcd$&_h5w*c2^xh(=9y2')
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',') if os.environ.get('ALLOWED_HOSTS') else ['localhost', '127.0.0.1']
 
 
 # Application definition
@@ -139,6 +138,19 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.AllowAny',
     ],
     'DATETIME_FORMAT': '%d/%m/%Y %H:%M',
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+        'rest_framework.throttling.ScopedRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '30/min',
+        'user': '100/min',
+        'login': '5/min',
+        'registro': '3/min',
+        'dashboard': '30/min',
+        'escrita': '20/min',
+    },
 }
 
 from datetime import timedelta

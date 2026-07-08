@@ -13,6 +13,7 @@ from django.db.models import Count, Q
 from django.utils import timezone
 from datetime import timedelta
 from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework.throttling import ScopedRateThrottle
 
 
 class CursoViewSet(viewsets.ModelViewSet):
@@ -23,6 +24,11 @@ class CursoViewSet(viewsets.ModelViewSet):
         if self.action == 'list' or self.action == 'retrieve':
             return [AllowAny()]
         return [IsAuthenticated()]
+
+    def get_throttles(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            self.throttle_scope = 'escrita'
+        return super().get_throttles()
 
 
 class TrilhaViewSet(viewsets.ReadOnlyModelViewSet):
@@ -46,12 +52,14 @@ class NovidadeViewSet(viewsets.ReadOnlyModelViewSet):
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
+    throttle_scope = 'login'
 
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     permission_classes = [AllowAny]
     serializer_class = RegisterSerializer
+    throttle_scope = 'registro'
 
 
 class MeView(generics.RetrieveUpdateAPIView):
@@ -221,3 +229,5 @@ def dashboard_stats(request):
         },
         'alertas': alertas,
     })
+
+dashboard_stats.throttle_scope = 'dashboard'
