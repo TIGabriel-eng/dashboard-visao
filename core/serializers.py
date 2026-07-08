@@ -1,7 +1,11 @@
+import re
+
+from django.conf import settings
+from django.contrib.auth.models import User
+from django.db import connection
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import Curso, Trilha, Evento, Novidade, LogAtividade, Perfil
-from django.contrib.auth.models import User
 
 
 class CursoSerializer(serializers.ModelSerializer):
@@ -110,16 +114,80 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token = super().get_token(user)
         return token
 
+    def _get_supabase_profile(self, email):
+        if not email:
+            return None
+
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    'SELECT nome, email, role FROM profiles WHERE lower(email) = %s LIMIT 1',
+                    [email.lower()],
+                )
+                row = cursor.fetchone()
+        except Exception:
+            return None
+
+        if not row:
+            return None
+
+        return {
+            'nome': row[0],
+            'email': row[1],
+            'role': row[2],
+        }
+
+    def _create_django_user_for_supabase_profile(self, email, supabase_profile, password):
+        username_base = email.split('@')[0]
+        username = username_base
+        counter = 1
+        while User.objects.filter(username=username).exists():
+            username = f"{username_base}{counter}"
+            counter += 1
+
+        nome = supabase_profile.get('nome') or username_base
+        nome_partes = nome.split(' ', 1)
+        first_name = nome_partes[0] if nome_partes else ''
+        last_name = nome_partes[1] if len(nome_partes) > 1 else ''
+
+        user = User.objects.create_user(
+            username=username,
+            email=email,
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+        )
+        user.save()
+        return user
+
     def validate(self, attrs):
+        login = attrs.get(self.username_field)
+        password = attrs.get('password')
+
+        if login and '@' in login:
+            email = login.strip().lower()
+            user = User.objects.filter(email__iexact=email).first()
+            if not user:
+                supabase_profile = self._get_supabase_profile(email)
+                profile_password = getattr(settings, 'PROFILE_LOGIN_PASSWORD', 'admin')
+                if supabase_profile and password == profile_password:
+                    user = self._create_django_user_for_supabase_profile(email, supabase_profile, profile_password)
+            if user:
+                attrs[self.username_field] = user.get_username()
+
         data = super().validate(attrs)
         user = self.user
         perfil = getattr(user, 'perfil', None)
+        supabase_profile = self._get_supabase_profile(user.email)
+        nome = supabase_profile.get('nome') if supabase_profile else ''
+        nome_partes = nome.split(' ', 1) if nome else []
+
         data['user'] = {
             'id': user.id,
             'username': user.username,
-            'email': user.email,
-            'first_name': user.first_name,
-            'last_name': user.last_name,
-            'role': perfil.role if perfil else 'visitor',
+            'email': supabase_profile.get('email') if supabase_profile else user.email,
+            'first_name': nome_partes[0] if nome_partes else user.first_name,
+            'last_name': nome_partes[1] if len(nome_partes) > 1 else user.last_name,
+            'role': supabase_profile.get('role') if supabase_profile else (perfil.role if perfil else 'visitor'),
         }
         return data

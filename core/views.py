@@ -10,6 +10,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django.db.models import Count, Q
+from django.db import connection
 from django.utils import timezone
 from datetime import timedelta
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -74,6 +75,45 @@ class LogAtividadeViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = LogAtividade.objects.all()
     serializer_class = LogAtividadeSerializer
     permission_classes = [IsAuthenticated]
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def profile_login(request):
+    email = (request.data.get('username') or request.data.get('email') or '').strip().lower()
+    password = request.data.get('password') or ''
+
+    if not email or not password:
+        return Response({'detail': 'Informe usuário e senha.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    profile_password = getattr(settings, 'PROFILE_LOGIN_PASSWORD', 'admin')
+    if password != profile_password:
+        return Response({'detail': 'Usuário ou senha inválidos.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                'SELECT id, nome, email, role FROM profiles WHERE lower(email) = %s LIMIT 1',
+                [email],
+            )
+            row = cursor.fetchone()
+    except Exception as exc:
+        return Response(
+            {'detail': 'Não foi possível consultar a tabela profiles.', 'error': str(exc)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+    if not row:
+        return Response({'detail': 'Usuário ou senha inválidos.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    return Response({
+        'user': {
+            'id': str(row[0]),
+            'nome': row[1],
+            'email': row[2],
+            'role': row[3] or 'visitor',
+        }
+    })
 
 
 from django.http import JsonResponse
