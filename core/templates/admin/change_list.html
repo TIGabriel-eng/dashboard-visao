@@ -1,0 +1,199 @@
+{% extends "admin/change_list.html" %}
+{% load i18n static %}
+
+{% block content_title %}
+  <div class="back-button-row">
+    <a href="{% url 'admin:index' %}" class="back-link anim-slide-in">
+      <i class="fa-solid fa-arrow-left"></i> Voltar ao painel
+    </a>
+  </div>
+  {{ block.super }}
+{% endblock %}
+
+{% block result_list %}
+  {{ block.super }}
+  <style>
+    .column-actions { width: 80px; text-align: center; }
+    .field-actions { text-align: center; vertical-align: middle; }
+    .row-actions {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .row-actions.is-visible {
+      display: inline-flex;
+    }
+    .row-action-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      text-decoration: none;
+      transition: transform .15s;
+      font-size: 14px;
+      background: transparent;
+    }
+    .row-action-btn:hover {
+      transform: scale(1.1);
+    }
+    .row-action-btn--edit {
+      color: #ef4444;
+    }
+    .row-action-btn--delete {
+      color: #ef4444;
+    }
+    @keyframes anim-slide {
+      from { opacity: 0; transform: translateX(-16px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    .anim-slide-in {
+      animation: anim-slide .35s ease-out;
+    }
+    .confirm-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.45);
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+    }
+    .confirm-modal {
+      background: #fff;
+      border-radius: 12px;
+      padding: 28px 32px;
+      max-width: 420px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+      font-family: 'DM Sans', sans-serif;
+    }
+    .confirm-modal__title {
+      margin: 0 0 8px;
+      font-size: 18px;
+      color: #1e293b;
+    }
+    .confirm-modal__text {
+      margin: 0 0 24px;
+      font-size: 14px;
+      color: #475569;
+      line-height: 1.6;
+    }
+    .confirm-modal__actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+    .confirm-modal__btn {
+      padding: 8px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .confirm-modal__btn:hover {
+      opacity: .85;
+    }
+    .confirm-modal__btn--yes {
+      background: #ef4444;
+      color: #fff;
+    }
+    .confirm-modal__btn--no {
+      background: #1e3a5f;
+      color: #fff;
+    }
+  </style>
+  <script>
+    (function() {
+      var table = document.getElementById('result_list');
+      if (!table) return;
+
+      var baseUrl = window.location.pathname.replace(/\/+$/, '');
+
+      var headerRow = table.querySelector('thead tr');
+      if (!headerRow || headerRow.querySelector('.column-actions')) return;
+
+      var th = document.createElement('th');
+      th.scope = 'col';
+      th.className = 'column-actions';
+      th.textContent = 'Ações';
+      headerRow.appendChild(th);
+
+      var modalOverlay = document.createElement('div');
+      modalOverlay.className = 'confirm-overlay';
+      modalOverlay.innerHTML =
+        '<div class="confirm-modal">' +
+          '<h3 class="confirm-modal__title">Confirmar exclus\u00e3o</h3>' +
+          '<p class="confirm-modal__text">' +
+            'Voc\u00ea tem certeza que deseja excluir "<strong class="confirm-modal__name"></strong>"? ' +
+            'Essa a\u00e7\u00e3o n\u00e3o pode ser desfeita.' +
+          '</p>' +
+          '<div class="confirm-modal__actions">' +
+            '<button class="confirm-modal__btn confirm-modal__btn--no">N\u00e3o</button>' +
+            '<button class="confirm-modal__btn confirm-modal__btn--yes">Sim</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(modalOverlay);
+
+      var deleteUrlStorage = null;
+      var nameEl = modalOverlay.querySelector('.confirm-modal__name');
+      var closeModal = function() { modalOverlay.style.display = 'none'; };
+
+      modalOverlay.querySelector('.confirm-modal__btn--no').addEventListener('click', closeModal);
+      modalOverlay.querySelector('.confirm-modal__btn--yes').addEventListener('click', function() {
+        if (deleteUrlStorage) window.location.href = deleteUrlStorage;
+      });
+      modalOverlay.addEventListener('click', function(e) {
+        if (e.target === modalOverlay) closeModal();
+      });
+
+      var rows = table.querySelectorAll('tbody tr');
+      rows.forEach(function(row) {
+        var checkbox = row.querySelector('.action-select');
+        if (!checkbox) return;
+
+        var pk = checkbox.value;
+
+        var td = document.createElement('td');
+        td.className = 'field-actions';
+
+        var actionsDiv = document.createElement('div');
+        actionsDiv.className = 'row-actions';
+
+        var editLink = document.createElement('a');
+        editLink.href = baseUrl + '/' + pk + '/change/';
+        editLink.className = 'row-action-btn row-action-btn--edit';
+        editLink.title = 'Editar';
+        editLink.innerHTML = '<i class="fa-solid fa-pencil"></i>';
+        actionsDiv.appendChild(editLink);
+
+        actionsDiv.appendChild(document.createTextNode(' '));
+
+        var deleteLink = document.createElement('a');
+        deleteLink.href = 'javascript:void(0)';
+        deleteLink.className = 'row-action-btn row-action-btn--delete';
+        deleteLink.title = 'Excluir';
+        deleteLink.innerHTML = '<i class="fa-solid fa-trash"></i>';
+        deleteLink.addEventListener('click', function() {
+          var rowNameEl = row.querySelector('th[scope="row"] a, th a, th');
+          var itemName = rowNameEl ? rowNameEl.textContent.trim() : 'este item';
+          nameEl.textContent = itemName;
+          deleteUrlStorage = baseUrl + '/' + pk + '/delete/';
+          modalOverlay.style.display = 'flex';
+        });
+        actionsDiv.appendChild(deleteLink);
+
+        td.appendChild(actionsDiv);
+        row.appendChild(td);
+
+        checkbox.addEventListener('change', function() {
+          actionsDiv.classList.toggle('is-visible', this.checked);
+        });
+      });
+    })();
+  </script>
+{% endblock %}

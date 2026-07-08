@@ -1,0 +1,245 @@
+{% load i18n static %}
+{% get_current_language as LANGUAGE_CODE %}
+{% get_current_language_bidi as LANGUAGE_BIDI %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE|default:"pt-br" }}" {% if LANGUAGE_BIDI %}dir="rtl"{% endif %}>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}{% endblock %} | Orcoma Academy</title>
+
+<link rel="icon" type="image/png" href="{% static 'admin/img/favicon.png' %}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+{% block extrastyle %}
+  <link rel="stylesheet" href="{% static 'admin/css/base.css' %}">
+  <link rel="stylesheet" href="{% static 'admin/css/responsive.css' %}">
+  <link rel="stylesheet" href="{% static 'admin/css/orcoma-theme.css' %}">
+{% endblock %}
+
+{% block extrahead %}{% endblock %}
+{% block blockbots %}<meta name="robots" content="NONE,NOARCHIVE">{% endblock %}
+</head>
+
+<body class="{% if is_popup %}popup {% endif %}{% block bodyclass %}{% endblock %}">
+
+{% if not is_popup %}
+
+<div class="admin-wrapper">
+
+  <aside class="admin-sidebar" id="adminSidebar">
+    <div class="admin-sidebar__logo">
+      <a href="{% url 'admin:index' %}">
+        <img src="{% static 'admin/img/logo.png' %}" alt="Orcoma Academy" class="admin-sidebar__logo-img">
+      </a>
+    </div>
+
+    <nav class="admin-sidebar__nav">
+      <ul>
+        <!-- Visão Geral -->
+        <li class="admin-nav-item{% if request.path == '/admin/' %} active{% endif %}">
+          <a href="{% url 'admin:index' %}" class="typing-nav">
+            <i class="fa-solid fa-chart-pie"></i>
+            <span class="nav-text">Visão Geral</span>
+          </a>
+        </li>
+
+        <!-- Cursos -->
+        <li class="admin-nav-item{% if '/admin/core/curso/' in request.path %} active{% endif %}">
+          <a href="{% url 'admin:core_curso_changelist' %}" class="typing-nav">
+            <i class="fa-solid fa-video"></i>
+            <span class="nav-text">Cursos</span>
+          </a>
+        </li>
+
+        <!-- Eventos -->
+        <li class="admin-nav-item{% if '/admin/core/evento/' in request.path %} active{% endif %}">
+          <a href="{% url 'admin:core_evento_changelist' %}" class="typing-nav">
+            <i class="fa-solid fa-bullhorn"></i>
+            <span class="nav-text">Eventos</span>
+          </a>
+        </li>
+
+        <!-- Trilhas -->
+        <li class="admin-nav-item{% if '/admin/core/trilha/' in request.path %} active{% endif %}">
+          <a href="{% url 'admin:core_trilha_changelist' %}" class="typing-nav">
+            <i class="fa-solid fa-route"></i>
+            <span class="nav-text">Trilhas</span>
+          </a>
+        </li>
+
+        <!-- Novidades -->
+        <li class="admin-nav-item{% if '/admin/core/novidade/' in request.path %} active{% endif %}">
+          <a href="{% url 'admin:core_novidade_changelist' %}" class="typing-nav">
+            <i class="fa-solid fa-star"></i>
+            <span class="nav-text">Novidades</span>
+          </a>
+        </li>
+
+        <!-- Usuários -->
+        <li class="admin-nav-item{% if '/admin/core/cliente/' in request.path %} active{% endif %}">
+          <a href="{% url 'admin:core_cliente_changelist' %}" class="typing-nav">
+            <i class="fa-solid fa-users"></i>
+            <span class="nav-text">Usuários</span>
+          </a>
+        </li>
+
+        <!-- Log de Atividades -->
+        <li class="admin-nav-item{% if '/admin/core/logatividade/' in request.path %} active{% endif %}">
+          <a href="{% url 'admin:core_logatividade_changelist' %}" class="typing-nav">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            <span class="nav-text">Log de Atividades</span>
+          </a>
+        </li>
+
+        <!-- Planos -->
+        <li class="admin-nav-item{% if '/admin/core/plano/' in request.path %} active{% endif %}">
+          <a href="{% url 'admin:core_plano_changelist' %}" class="typing-nav">
+            <i class="fa-solid fa-file-invoice"></i>
+            <span class="nav-text">Planos</span>
+          </a>
+        </li>
+
+        <!-- Ambientes -->
+        <li class="admin-nav-item{% if '/admin/core/ambiente/' in request.path %} active{% endif %}">
+          <a href="{% url 'admin:core_ambiente_changelist' %}" class="typing-nav">
+            <i class="fa-solid fa-globe"></i>
+            <span class="nav-text">Ambientes</span>
+          </a>
+        </li>
+      </ul>
+    </nav>
+
+    <div class="admin-sidebar__divider"></div>
+
+    <div class="admin-sidebar__back">
+      <a href="/frontend/Login/Index.html" class="admin-sidebar__back-link">
+        <i class="fa-solid fa-arrow-left"></i>
+        <span>Voltar ao Portal</span>
+      </a>
+    </div>
+  </aside>
+
+  <div class="admin-main" id="adminMain">
+
+    {% block branding %}
+    <header class="admin-topbar">
+      <div class="admin-topbar__left">
+        <button class="admin-topbar__toggle" id="adminMenuToggle" aria-label="Abrir menu">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="admin-topbar__brand">
+          <span class="admin-topbar__brand-text">Administração</span>
+        </div>
+      </div>
+      <div class="admin-topbar__right">
+        <span class="admin-topbar__user">
+          <i class="fa-regular fa-circle-user"></i>
+          {% firstof user.get_short_name user.get_username %}
+        </span>
+        <a href="/frontend/Login/Index.html" class="admin-topbar__logout" title="Sair">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </a>
+      </div>
+    </header>
+    {% endblock %}
+
+    {% block breadcrumbs %}{% endblock %}
+
+    {% block messages %}
+      {% if messages %}
+        {% for msg in messages %}
+          <div class="admin-alert admin-alert--{{ msg.tags }}">{{ msg }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endblock %}
+
+    <div class="admin-content">
+      {% block content_title %}{% if title %}<h1 class="admin-page-title">{{ title }}</h1>{% endif %}{% endblock %}
+      {% block content %}{{ content }}{% endblock %}
+    </div>
+
+    {% block footer %}
+    <div class="admin-footer">
+      <p>&copy; {% now "Y" %} Orcoma Academy. Todos os direitos reservados.</p>
+    </div>
+    {% endblock %}
+
+  </div>
+</div>
+
+<div class="admin-overlay" id="adminOverlay"></div>
+
+{% else %}
+
+<div class="admin-popup-content">
+  {{ content }}
+</div>
+
+{% endif %}
+
+{% block extrajs %}{% endblock %}
+<script>
+(function() {
+  var sidebar = document.getElementById('adminSidebar');
+  var toggle = document.getElementById('adminMenuToggle');
+  var overlay = document.getElementById('adminOverlay');
+
+  if (toggle && sidebar) {
+    toggle.addEventListener('click', function(e) {
+      e.stopPropagation();
+      sidebar.classList.toggle('is-open');
+      if (overlay) overlay.classList.toggle('is-visible');
+    });
+  }
+
+  if (overlay) {
+    overlay.addEventListener('click', function() {
+      sidebar.classList.remove('is-open');
+      overlay.classList.remove('is-visible');
+    });
+  }
+
+  /* ── Typing Animation ── */
+  var typingItems = document.querySelectorAll('.typing-nav');
+  var typingTimers = {};
+
+  typingItems.forEach(function(el) {
+    var span = el.querySelector('.nav-text');
+    var fullText = span.textContent;
+
+    el.addEventListener('mouseenter', function() {
+      var key = fullText;
+      if (typingTimers[key]) return;
+      var i = 0;
+      span.textContent = '';
+      span.classList.add('typing');
+      typingTimers[key] = setInterval(function() {
+        span.textContent = fullText.substring(0, i + 1);
+        i++;
+        if (i >= fullText.length) {
+          clearInterval(typingTimers[key]);
+          delete typingTimers[key];
+          span.classList.remove('typing');
+        }
+      }, 40);
+    });
+
+    el.addEventListener('mouseleave', function() {
+      var key = fullText;
+      if (typingTimers[key]) {
+        clearInterval(typingTimers[key]);
+        delete typingTimers[key];
+      }
+      span.classList.remove('typing');
+      span.textContent = fullText;
+    });
+  });
+
+})();
+</script>
+</body>
+</html>

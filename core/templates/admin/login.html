@@ -1,0 +1,58 @@
+{% extends "admin/login.html" %}
+{% load static %}
+
+{% block branding %}{% endblock %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'admin/css/orcoma-theme.css' %}">
+  <style>
+    body.login .admin-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+      background: var(--bg-primary);
+    }
+    body.login .admin-sidebar { display: none; }
+    body.login .admin-main {
+      margin-left: 0;
+      max-width: 420px;
+      width: 100%;
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 40px 32px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    body.login .admin-topbar,
+    body.login .admin-footer,
+    body.login .breadcrumbs { display: none; }
+    body.login .admin-content { padding: 0; }
+    body.login .login-branding { text-align: center; margin-bottom: 8px; }
+    body.login .login-branding img { height: 80px; }
+    body.login .login-title {
+      text-align: center;
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 0 0 24px;
+    }
+  </style>
+{% endblock %}
+
+{% block content_title %}{% endblock %}
+
+{% block content %}
+  <div class="login-branding">
+    <img src="{% static 'admin/img/logo.png' %}" alt="Orcoma Academy" class="admin-logo">
+  </div>
+  <h1 class="login-title">Acessar Painel</h1>
+  {{ block.super }}
+{% endblock %}
+
+{% block footer %}{% endblock %}
