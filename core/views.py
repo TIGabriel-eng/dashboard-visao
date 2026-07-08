@@ -82,7 +82,6 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.conf import settings
 import json
 
-
 @staff_member_required
 @require_POST
 def corrigir_texto(request):

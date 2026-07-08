@@ -1,9 +1,11 @@
 from django.contrib import admin
 from django.urls import path, include
+from django.shortcuts import redirect
 from core.views import CustomTokenObtainPairView
 from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
+    path('', lambda request: redirect('/admin/login/?next=/admin/'), name='root'),
     path('admin/', admin.site.urls),
     path('api/', include('core.urls')),
     path('api/token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
