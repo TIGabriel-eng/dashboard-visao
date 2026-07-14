@@ -21,6 +21,12 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.throttling import ScopedRateThrottle
 
 
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def ping(request):
+    return Response({'status': 'ok'}, status=status.HTTP_200_OK)
+
+
 class IsStaffOrReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
         if request.method in permissions.SAFE_METHODS:

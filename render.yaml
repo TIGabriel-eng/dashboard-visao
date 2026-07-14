@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: orcoma-academy-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn orcoma_academy.wsgi:application
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: orcoma-db
+          property: connectionString
+      - key: PYTHON_VERSION
+        value: "3.12"
+
+  - type: cron
+    name: orcoma-keep-alive
+    runtime: python
+    buildCommand: pip install requests
+    schedule: "*/10 * * * *"
+    startCommand: python keep_alive.py
+    envVars:
+      - key: APP_URL
+        value: "https://orcoma-academy-api.onrender.com/api/ping/"
+
+databases:
+  - name: orcoma-db
+    plan: free
+    databaseName: orcoma_academy

@@ -15,6 +15,7 @@ router.register(r'assinaturas', views.AssinaturaPlanoViewSet, basename='assinatu
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('ping/', views.ping, name='ping'),
     path('dashboard/', views.dashboard_stats, name='dashboard-stats'),
     path('dashboard-data/', views.dashboard_stats, name='dashboard-data'),
     path('corrigir-texto/', views.corrigir_texto, name='corrigir-texto'),
