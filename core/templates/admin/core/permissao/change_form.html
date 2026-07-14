@@ -1,0 +1,685 @@
+{% extends "admin/change_form.html" %}
+{% load i18n static admin_urls %}
+
+{% block field_sets %}
+  <div class="perm-form-wrapper">
+    <div class="perm-name-section">
+      <fieldset class="module aligned">
+        <h2 class="perm-section-title">
+          <i class="fa-solid fa-tag"></i> Informações da Permissão
+        </h2>
+        <div class="form-row field-name">
+          <label for="id_name">Nome:</label>
+          <input type="text" name="name" value="{{ original.name|default:'' }}" class="vTextField" id="id_name" maxlength="150" />
+          <p class="help">Nome descritivo para este conjunto de permissões.</p>
+        </div>
+      </fieldset>
+    </div>
+
+    <div class="perm-grouped-section">
+      <h2 class="perm-section-title">
+        <i class="fa-solid fa-shield-halved"></i> Permissões
+      </h2>
+      <p class="perm-section-help">Ative ou desative as permissões desejadas usando os toggles abaixo.</p>
+
+      <div class="perm-category-list" id="permCategoryList">
+        {% for category in perm_categories %}
+        <div class="perm-category" data-category="{{ category.slug }}">
+          <div class="perm-category__header" onclick="toggleCategory(this)">
+            <div class="perm-category__left">
+              <i class="perm-category__icon {{ category.icon }}"></i>
+              <span class="perm-category__name">{{ category.name }}</span>
+              <span class="perm-category__count">{{ category.total }}</span>
+            </div>
+            <div class="perm-category__right">
+              <button type="button" class="perm-select-all" onclick="event.stopPropagation(); toggleAllInCategory('{{ category.slug }}', true)" title="Selecionar todas">Todas</button>
+              <button type="button" class="perm-deselect-all" onclick="event.stopPropagation(); toggleAllInCategory('{{ category.slug }}', false)" title="Remover todas">Nenhuma</button>
+              <i class="perm-category__chevron fa-solid fa-chevron-down"></i>
+            </div>
+          </div>
+          <div class="perm-category__body">
+            {% for model in category.models %}
+            <div class="perm-model-group" data-model="{{ model.app_label }}.{{ model.object_name|lower }}">
+              <div class="perm-model-group__header">
+                <span class="perm-model-group__name">{{ model.verbose_name }}</span>
+              </div>
+              {% for perm in model.permissions %}
+              <div class="perm-row" data-pk="{{ perm.pk }}">
+                <div class="perm-row__label">
+                  <span class="perm-row__codename">{{ perm.codename }}</span>
+                  <span class="perm-row__name">{{ perm.name }}</span>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" data-pk="{{ perm.pk }}" class="perm-toggle" />
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              {% endfor %}
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════ -->
+    <!-- ATRIBUIÇÃO RÁPIDA DE USUÁRIOS                 -->
+    <!-- ═══════════════════════════════════════════════ -->
+    {% if original and original.pk %}
+    <div class="perm-users-section">
+      <h2 class="perm-section-title">
+        <i class="fa-solid fa-users"></i> Usuários neste Grupo
+        <span class="perm-users-count" id="usersCount">{{ group_users|length }}</span>
+      </h2>
+      <p class="perm-section-help">Marque ou desmarque os usuários que devem pertencer a este grupo.</p>
+
+      <div class="perm-users-search">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="userSearchInput" placeholder="Buscar usuário..." oninput="filterUsers(this.value)" />
+      </div>
+
+      <div class="perm-users-list" id="usersList">
+        {% for user in all_users %}
+        <div class="perm-user-row" data-username="{{ user.username|lower }}" data-email="{{ user.email|lower }}">
+          <label class="perm-user-row__label">
+            <input type="checkbox" name="group_users" value="{{ user.pk }}" class="perm-user-toggle"
+              {% if user.pk in group_users %}checked{% endif %} />
+            <span class="perm-user-row__checkbox"></span>
+            <div class="perm-user-row__info">
+              <span class="perm-user-row__name">{{ user.get_full_name|default:user.username }}</span>
+              <span class="perm-user-row__email">{{ user.email }}</span>
+            </div>
+          </label>
+        </div>
+        {% endfor %}
+        {% if not all_users %}
+        <p class="perm-users-empty">Nenhum usuário encontrado.</p>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <select name="permissions" multiple id="id_permissions_select" class="perm-hidden-select">
+      {% for perm in original_permissions %}
+      <option value="{{ perm.pk }}" {% if perm.pk in selected_permissions %}selected{% endif %}>{{ perm }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <style>
+    .perm-form-wrapper {
+      max-width: 100%;
+    }
+
+    .perm-section-title {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 4px 0;
+      padding: 0;
+    }
+
+    .perm-section-title i {
+      color: var(--accent-orange);
+      font-size: 14px;
+    }
+
+    .perm-section-help {
+      color: var(--text-muted);
+      font-size: 12px;
+      margin: 0 0 16px 0;
+    }
+
+    .perm-name-section {
+      margin-bottom: 24px;
+    }
+
+    .perm-name-section .form-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .perm-name-section label {
+      color: var(--text-secondary);
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    .perm-name-section .help {
+      color: var(--text-muted);
+      font-size: 12px;
+      margin: 4px 0 0;
+    }
+
+    .perm-hidden-select {
+      position: absolute;
+      left: -9999px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* ── Categorias ── */
+    .perm-category-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .perm-category {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      transition: box-shadow 0.2s;
+    }
+
+    .perm-category:hover {
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    .perm-category__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      background: linear-gradient(135deg, var(--bg-surface), var(--bg-card));
+      border-bottom: 1px solid var(--border-color);
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.2s;
+    }
+
+    .perm-category__header:hover {
+      background: linear-gradient(135deg, var(--bg-surface-2), var(--bg-card));
+    }
+
+    .perm-category__left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .perm-category__icon {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 157, 0, 0.1);
+      border: 1px solid rgba(255, 157, 0, 0.2);
+      border-radius: 10px;
+      color: var(--accent-orange);
+      font-size: 16px;
+    }
+
+    .perm-category__name {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .perm-category__count {
+      background: var(--accent-blue);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    .perm-category__right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .perm-select-all,
+    .perm-deselect-all {
+      background: none;
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .perm-select-all:hover {
+      border-color: var(--accent-blue);
+      color: var(--accent-blue);
+    }
+
+    .perm-deselect-all:hover {
+      border-color: var(--accent-red);
+      color: var(--accent-red);
+    }
+
+    .perm-category__chevron {
+      color: var(--text-muted);
+      font-size: 12px;
+      transition: transform 0.3s;
+    }
+
+    .perm-category.is-collapsed .perm-category__chevron {
+      transform: rotate(-90deg);
+    }
+
+    .perm-category__body {
+      max-height: 2000px;
+      overflow: hidden;
+      transition: max-height 0.4s ease, opacity 0.3s ease;
+      opacity: 1;
+    }
+
+    .perm-category.is-collapsed .perm-category__body {
+      max-height: 0;
+      opacity: 0;
+    }
+
+    /* ── Modelo ── */
+    .perm-model-group {
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .perm-model-group:last-child {
+      border-bottom: none;
+    }
+
+    .perm-model-group__header {
+      padding: 10px 18px 6px;
+      background: rgba(255, 255, 255, 0.02);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .perm-model-group__name {
+      font-family: var(--font-display);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Linha de Permissão ── */
+    .perm-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+      transition: background 0.15s;
+    }
+
+    .perm-row:last-child {
+      border-bottom: none;
+    }
+
+    .perm-row:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .perm-row__label {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .perm-row__codename {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 12px;
+      color: var(--accent-orange);
+      font-weight: 500;
+    }
+
+    .perm-row__name {
+      font-size: 13px;
+      color: var(--text-primary);
+    }
+
+    /* ── Toggle Switch ── */
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 48px;
+      height: 26px;
+      flex-shrink: 0;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: var(--bg-surface-2);
+      border: 2px solid var(--border-color);
+      border-radius: 13px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .toggle-slider:before {
+      content: "";
+      position: absolute;
+      height: 18px;
+      width: 18px;
+      left: 2px;
+      bottom: 2px;
+      background: var(--text-muted);
+      border-radius: 50%;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .toggle-switch input:checked + .toggle-slider {
+      background: linear-gradient(135deg, #10b981, #059669);
+      border-color: #10b981;
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+    }
+
+    .toggle-switch input:checked + .toggle-slider:before {
+      transform: translateX(22px);
+      background: #fff;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .toggle-switch input:focus + .toggle-slider {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3);
+    }
+
+    /* ── Responsivo ── */
+    @media (max-width: 768px) {
+      .perm-category__header {
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .perm-category__right {
+        width: 100%;
+        justify-content: flex-end;
+      }
+
+      .perm-row {
+        padding: 10px 14px;
+      }
+
+      .perm-row__label {
+        flex: 1;
+      }
+    }
+
+    /* ── Animação de entrada ── */
+    @keyframes permFadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .perm-category {
+      animation: permFadeIn 0.3s ease-out forwards;
+    }
+
+    .perm-category:nth-child(2) { animation-delay: 0.05s; }
+    .perm-category:nth-child(3) { animation-delay: 0.1s; }
+    .perm-category:nth-child(4) { animation-delay: 0.15s; }
+
+    /* ══════════════════════════════════════════════ */
+    /* ATRIBUIÇÃO RÁPIDA DE USUÁRIOS                 */
+    /* ══════════════════════════════════════════════ */
+    .perm-users-section {
+      margin-top: 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+    }
+
+    .perm-users-section .perm-section-title {
+      margin-bottom: 4px;
+    }
+
+    .perm-users-count {
+      background: var(--accent-blue);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-left: 8px;
+    }
+
+    .perm-users-search {
+      position: relative;
+      margin-bottom: 16px;
+    }
+
+    .perm-users-search i {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .perm-users-search input {
+      width: 100%;
+      padding: 10px 12px 10px 36px;
+      background: var(--bg-surface-2);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-size: 13px;
+      font-family: var(--font-body);
+      box-sizing: border-box;
+    }
+
+    .perm-users-search input:focus {
+      border-color: var(--accent-orange);
+      outline: none;
+    }
+
+    .perm-users-list {
+      max-height: 350px;
+      overflow-y: auto;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      background: var(--bg-surface);
+    }
+
+    .perm-user-row {
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .perm-user-row:last-child {
+      border-bottom: none;
+    }
+
+    .perm-user-row__label {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .perm-user-row__label:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .perm-user-toggle {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .perm-user-row__checkbox {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border-color);
+      border-radius: 4px;
+      background: var(--bg-surface-2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+
+    .perm-user-toggle:checked + .perm-user-row__checkbox {
+      background: linear-gradient(135deg, #10b981, #059669);
+      border-color: #10b981;
+    }
+
+    .perm-user-toggle:checked + .perm-user-row__checkbox::after {
+      content: '\f00c';
+      font-family: 'Font Awesome 6 Free';
+      font-weight: 900;
+      color: #fff;
+      font-size: 11px;
+    }
+
+    .perm-user-row__info {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .perm-user-row__name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .perm-user-row__email {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .perm-users-empty {
+      padding: 20px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+  </style>
+{% endblock %}
+
+{% block admin_change_form_document_ready %}
+  {{ block.super }}
+  <script>
+  (function() {
+    var select = document.getElementById('id_permissions_select');
+    if (!select) return;
+
+    var categorias = {
+      'Administração': {
+        icon: 'fa-solid fa-users-gear',
+        models: ['user', 'group', 'perfil', 'plano', 'ambiente']
+      },
+      'Conteúdo': {
+        icon: 'fa-solid fa-book-open',
+        models: ['curso', 'trilha', 'novidade']
+      },
+      'Moderadores': {
+        icon: 'fa-solid fa-user-shield',
+        models: ['evento', 'logatividade', 'cursovisualizacao', 'matricula']
+      }
+    };
+
+    // Sync toggles → select
+    document.querySelectorAll('.perm-toggle').forEach(function(cb) {
+      var pk = cb.getAttribute('data-pk');
+      var opt = select.querySelector('option[value="' + pk + '"]');
+      if (opt) opt.selected = cb.checked;
+
+      cb.addEventListener('change', function() {
+        var opt = select.querySelector('option[value="' + pk + '"]');
+        if (opt) opt.selected = this.checked;
+        updateCategoryCounts();
+      });
+    });
+
+    // Toggle category collapse
+    window.toggleCategory = function(headerEl) {
+      var cat = headerEl.closest('.perm-category');
+      if (cat) cat.classList.toggle('is-collapsed');
+    };
+
+    // Toggle all in category
+    window.toggleAllInCategory = function(slug, state) {
+      var cat = document.querySelector('.perm-category[data-category="' + slug + '"]');
+      if (!cat) return;
+      cat.querySelectorAll('.perm-toggle').forEach(function(cb) {
+        cb.checked = state;
+        cb.dispatchEvent(new Event('change'));
+      });
+    };
+
+    // Update counts
+    function updateCategoryCounts() {
+      document.querySelectorAll('.perm-category').forEach(function(cat) {
+        var total = cat.querySelectorAll('.perm-toggle').length;
+        var checked = cat.querySelectorAll('.perm-toggle:checked').length;
+        var countEl = cat.querySelector('.perm-category__count');
+        if (countEl) {
+          countEl.textContent = checked + '/' + total;
+          countEl.style.background = checked > 0 ? '#10b981' : 'var(--accent-blue)';
+        }
+      });
+    }
+
+    // Search filter (if needed)
+    window.filterPerms = function(query) {
+      query = query.toLowerCase();
+      document.querySelectorAll('.perm-row').forEach(function(row) {
+        var codename = row.querySelector('.perm-row__codename');
+        var name = row.querySelector('.perm-row__name');
+        var match = (codename && codename.textContent.toLowerCase().includes(query)) ||
+                    (name && name.textContent.toLowerCase().includes(query));
+        row.style.display = match ? '' : 'none';
+      });
+    };
+
+    updateCategoryCounts();
+
+    // ── User search filter ──
+    window.filterUsers = function(query) {
+      query = query.toLowerCase();
+      document.querySelectorAll('.perm-user-row').forEach(function(row) {
+        var username = row.getAttribute('data-username') || '';
+        var email = row.getAttribute('data-email') || '';
+        var match = username.includes(query) || email.includes(query);
+        row.style.display = match ? '' : 'none';
+      });
+    };
+
+    // Update users count
+    function updateUsersCount() {
+      var countEl = document.getElementById('usersCount');
+      if (!countEl) return;
+      var total = document.querySelectorAll('.perm-user-toggle').length;
+      var checked = document.querySelectorAll('.perm-user-toggle:checked').length;
+      countEl.textContent = checked + '/' + total;
+    }
+
+    document.querySelectorAll('.perm-user-toggle').forEach(function(cb) {
+      cb.addEventListener('change', updateUsersCount);
+    });
+  })();
+  </script>
+{% endblock %}

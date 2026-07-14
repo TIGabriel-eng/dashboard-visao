@@ -1,12 +1,7 @@
 {% extends "admin/change_form.html" %}
 {% load i18n static admin_urls %}
 
-{% block content_title %}
-  <div class="back-button-row">
-    <a href="{% url opts|admin_urlname:'changelist' %}" class="back-link anim-slide-in">
-      <i class="fa-solid fa-arrow-left"></i> Voltar à lista
-    </a>
-  </div>
+{% block extrastyle %}
   {{ block.super }}
   <style>
     @keyframes anim-slide {
@@ -16,17 +11,12 @@
     .anim-slide-in {
       animation: anim-slide .35s ease-out;
     }
-  </style>
-{% endblock %}
 
-{% block admin_change_form_document_ready %}
-  {{ block.super }}
-  <style>
     .gemini-fab {
       position: fixed;
       bottom: 24px;
       right: 24px;
-      z-index: 9999;
+      z-index: 100;
       display: flex;
       align-items: center;
       gap: 12px;
@@ -56,20 +46,10 @@
       box-shadow: 0 4px 12px rgba(99,102,241,.2);
       padding: 0;
     }
-    .gemini-fab__btn:hover {
-      transform: scale(1.05);
-    }
-    .gemini-fab__btn:active {
-      transform: scale(.95);
-    }
-    .gemini-fab__btn img {
-      width: 32px;
-      height: 32px;
-      display: block;
-    }
-    .gemini-fab__btn.is-loading img {
-      display: none;
-    }
+    .gemini-fab__btn:hover { transform: scale(1.05); }
+    .gemini-fab__btn:active { transform: scale(.95); }
+    .gemini-fab__btn img { width: 32px; height: 32px; display: block; }
+    .gemini-fab__btn.is-loading img { display: none; }
     .gemini-fab__btn .spinner {
       display: none;
       width: 22px;
@@ -79,25 +59,22 @@
       border-radius: 50%;
       animation: fab-spin .6s linear infinite;
     }
-    .gemini-fab__btn.is-loading .spinner {
-      display: inline-block;
-    }
+    .gemini-fab__btn.is-loading .spinner { display: inline-block; }
     .gemini-fab__btn--glow {
       animation: fab-glow .6s ease-out;
     }
-    @keyframes fab-spin {
-      to { transform: rotate(360deg) }
-    }
+    @keyframes fab-spin { to { transform: rotate(360deg) } }
     @keyframes fab-glow {
       0% { box-shadow: 0 0 0 0 rgba(99,102,241,.5); }
       50% { box-shadow: 0 0 30px 12px rgba(99,102,241,.3); }
       100% { box-shadow: 0 4px 12px rgba(99,102,241,.2); }
     }
+
     .admin-toast {
       position: fixed;
       top: 20px;
       right: 20px;
-      z-index: 99999;
+      z-index: 1100;
       min-width: 280px;
       max-width: 420px;
       padding: 14px 18px;
@@ -113,9 +90,7 @@
       transition: transform .3s ease;
       pointer-events: auto;
     }
-    .admin-toast.is-visible {
-      transform: translateX(0);
-    }
+    .admin-toast.is-visible { transform: translateX(0); }
     .admin-toast--erro, .admin-toast--sucesso {
       background: #eff6ff;
       border: 1px solid #bfdbfe;
@@ -134,7 +109,107 @@
       flex-shrink: 0;
     }
     .admin-toast__close:hover { opacity: 1; }
+
+    .video-modal__overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 1000;
+    }
+    .video-modal__content {
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      background: #fff;
+      border-radius: 12px;
+      padding: 24px;
+      z-index: 1001;
+      max-width: 800px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .video-modal__close {
+      position: absolute;
+      top: -12px; right: -12px;
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: none;
+      background: #1e3a5f;
+      color: #fff;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+    .video-modal__close:hover { background: #d32f2f; }
+    .video-modal__title {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 16px;
+      font-weight: 600;
+      color: #1e3a5f;
+      margin: 0 0 16px;
+    }
+    .video-modal__player {
+      width: 100%;
+      max-height: 70vh;
+      border-radius: 8px;
+      background: #000;
+    }
+
+    .preview-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      margin: 8px 0;
+      background: #1e3a5f;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      transition: background .2s;
+    }
+    .preview-btn:hover { background: #2d5a8e; }
+    .preview-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .preview-btn--live {
+      background: #047857;
+    }
+    .preview-btn--live:hover { background: #059669; }
   </style>
+{% endblock %}
+
+{% block content_title %}
+  <div class="back-button-row">
+    <a href="{% url opts|admin_urlname:'changelist' %}" class="back-link anim-slide-in">
+      <i class="fa-solid fa-arrow-left"></i> Voltar à lista
+    </a>
+  </div>
+  {{ block.super }}
+{% endblock %}
+
+{% block field_sets %}
+  {{ block.super }}
+  {% if opts.model_name == 'curso' %}
+  <div id="videoPreviewModal" class="video-modal" style="display:none;">
+    <div class="video-modal__overlay" onclick="closeVideoPreview()"></div>
+    <div class="video-modal__content">
+      <button type="button" class="video-modal__close" onclick="closeVideoPreview()">&times;</button>
+      <h3 class="video-modal__title">Preview do Vídeo</h3>
+      <video id="videoPreviewPlayer" class="video-modal__player" controls preload="metadata">
+        Seu navegador não suporta vídeo HTML5.
+      </video>
+    </div>
+  </div>
+  {% endif %}
+{% endblock %}
+
+{% block admin_change_form_document_ready %}
+  {{ block.super }}
 
   <div class="gemini-fab" id="geminiFab">
     <span class="gemini-fab__tooltip">Precisa de ajuda? Use o Gemini</span>
@@ -146,6 +221,73 @@
 
   <script>
     (function() {
+      /* -- Video Preview -- */
+      {% if opts.model_name == 'curso' and original and original.video %}
+      document.addEventListener('DOMContentLoaded', function() {
+        var fieldRow = document.querySelector('.form-row.field-video');
+        if (!fieldRow) return;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'preview-btn';
+        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Preview do Vídeo';
+        btn.addEventListener('click', function() {
+          var modal = document.getElementById('videoPreviewModal');
+          var player = document.getElementById('videoPreviewPlayer');
+          if (modal && player) {
+            player.src = '{{ original.video.url }}';
+            modal.style.display = 'block';
+            player.play().catch(function(){});
+          }
+        });
+        fieldRow.querySelector('.field-box')?.appendChild(btn) || fieldRow.appendChild(btn);
+      });
+      {% endif %}
+
+      window.closeVideoPreview = function() {
+        var modal = document.getElementById('videoPreviewModal');
+        var player = document.getElementById('videoPreviewPlayer');
+        if (modal) modal.style.display = 'none';
+        if (player) { player.pause(); player.removeAttribute('src'); player.load(); }
+      };
+
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeVideoPreview();
+      });
+
+      /* -- Live preview on file select (for new/not-yet-saved) -- */
+      var _lastObjectURL = null;
+      document.addEventListener('change', function(e) {
+        if (e.target.name === 'video') {
+          var file = e.target.files[0];
+          if (!file) return;
+          var btn = document.querySelector('.preview-btn');
+          if (btn) btn.style.display = 'none';
+          var liveBtn = document.querySelector('.preview-btn--live');
+          if (!liveBtn) {
+            liveBtn = document.createElement('button');
+            liveBtn.type = 'button';
+            liveBtn.className = 'preview-btn preview-btn--live';
+            liveBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Preview (não salvo)';
+            var fieldRow = document.querySelector('.form-row.field-video .field-box');
+            if (fieldRow) fieldRow.appendChild(liveBtn);
+          } else {
+            liveBtn.style.display = '';
+          }
+          liveBtn.onclick = function() {
+            var modal = document.getElementById('videoPreviewModal');
+            var player = document.getElementById('videoPreviewPlayer');
+            if (modal && player) {
+              if (_lastObjectURL) URL.revokeObjectURL(_lastObjectURL);
+              _lastObjectURL = URL.createObjectURL(file);
+              player.src = _lastObjectURL;
+              modal.style.display = 'block';
+              player.play().catch(function(){});
+            }
+          };
+        }
+      });
+
+      /* -- Toast -- */
       function mostrarToast(mensagem, tipo) {
         tipo = tipo || 'erro';
         var existing = document.querySelector('.admin-toast');
@@ -173,6 +315,7 @@
         }, 5000);
       }
 
+      /* -- Gemini -- */
       var fabBtn = document.getElementById('geminiFabBtn');
       if (fabBtn) {
         fabBtn.addEventListener('click', function() {
@@ -180,12 +323,12 @@
 
           var textarea = document.querySelector('textarea[name="descricao"], textarea[name="conteudo"]');
           if (!textarea) {
-            mostrarToast('Nenhum campo de texto encontrado nesta p\u00e1gina.');
+            mostrarToast('Nenhum campo de texto encontrado nesta página.');
             return;
           }
           var texto = textarea.value.trim();
           if (!texto) {
-            mostrarToast('O campo de texto est\u00e1 vazio.');
+            mostrarToast('O campo de texto está vazio.');
             return;
           }
 

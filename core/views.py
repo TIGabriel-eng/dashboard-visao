@@ -1,12 +1,16 @@
 from rest_framework import viewsets, permissions, generics, status
-from .models import Curso, Trilha, Evento, Novidade, LogAtividade, CursoVisualizacao, Matricula
+from .models import Curso, Trilha, Evento, Novidade, LogAtividade, CursoVisualizacao, Matricula, FormacaoAcademica, Habilidade, AssinaturaPlano, Ambiente
+from core.services.acesso import filtrar_cursos_acessiveis, user_can_access_curso, get_academias_permitidas
 from .serializers import (
     CursoSerializer, TrilhaSerializer, TrilhaListSerializer,
     EventoSerializer, NovidadeSerializer, LogAtividadeSerializer,
-    RegisterSerializer, MeSerializer, CustomTokenObtainPairSerializer
+    RegisterSerializer, MeSerializer, CustomTokenObtainPairSerializer,
+    MatriculaSerializer, MatriculaCreateSerializer,
+    FormacaoAcademicaSerializer, HabilidadeSerializer,
+    AssinaturaPlanoSerializer
 )
 from django.contrib.auth.models import User
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django.db.models import Count, Q
@@ -17,23 +21,67 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.throttling import ScopedRateThrottle
 
 
+class IsStaffOrReadOnly(permissions.BasePermission):
+    def has_permission(self, request, view):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return request.user and request.user.is_authenticated and request.user.is_staff
+
+
 class CursoViewSet(viewsets.ModelViewSet):
-    queryset = Curso.objects.all()
     serializer_class = CursoSerializer
+    permission_classes = [IsStaffOrReadOnly]
 
-    def get_permissions(self):
-        if self.action == 'list' or self.action == 'retrieve':
-            return [AllowAny()]
-        return [IsAuthenticated()]
+    def get_queryset(self):
+        qs = Curso.objects.select_related('ambiente').prefetch_related('videos', 'academias_extras')
+        user = self.request.user
 
-    def get_throttles(self):
-        if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            self.throttle_scope = 'escrita'
-        return super().get_throttles()
+        if not (user.is_authenticated and user.is_staff):
+            qs = qs.filter(status='publicado')
+
+        qs = filtrar_cursos_acessiveis(qs, user)
+
+        ambiente = self.request.query_params.get('ambiente')
+        if ambiente:
+            qs = qs.filter(
+                Q(ambiente__nome__iexact=ambiente) | Q(ambiente__id=ambiente)
+            )
+
+        status_param = self.request.query_params.get('status')
+        if status_param and user.is_authenticated and user.is_staff:
+            qs = Curso.objects.select_related('ambiente').prefetch_related('videos', 'academias_extras')
+            qs = qs.filter(status=status_param)
+            if ambiente:
+                qs = qs.filter(
+                    Q(ambiente__nome__iexact=ambiente) | Q(ambiente__id=ambiente)
+                )
+
+        return qs.distinct()
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if not user_can_access_curso(instance, request.user):
+            return Response(
+                {'detail': 'Você não tem permissão para acessar este curso.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
 
 
 class TrilhaViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Trilha.objects.all()
+    def get_queryset(self):
+        user = self.request.user
+        qs = Trilha.objects.select_related('ambiente').prefetch_related('cursos')
+        academias = get_academias_permitidas(user)
+        if user.is_authenticated and (user.is_superuser or user.is_staff):
+            return qs
+        if not user.is_authenticated:
+            return qs.filter(
+                cursos__is_gratuito=True,
+                cursos__status='publicado',
+            ).distinct()
+        return qs.filter(ambiente__in=academias).distinct()
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -49,6 +97,75 @@ class EventoViewSet(viewsets.ReadOnlyModelViewSet):
 class NovidadeViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Novidade.objects.filter(ativo=True)
     serializer_class = NovidadeSerializer
+
+
+class MatriculaViewSet(viewsets.ModelViewSet):
+    serializer_class = MatriculaSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Matricula.objects.filter(usuario=self.request.user)
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return MatriculaCreateSerializer
+        return MatriculaSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(usuario=self.request.user)
+
+    @action(detail=False, methods=['get'], url_path='minhas')
+    def minhas(self, request):
+        matriculas = Matricula.objects.filter(usuario=request.user)
+        serializer = MatriculaSerializer(matriculas, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['post'], url_path='concluir')
+    def concluir(self, request):
+        curso_id = request.data.get('curso')
+        if not curso_id:
+            return Response({'detail': 'curso é obrigatório.'}, status=status.HTTP_400_BAD_REQUEST)
+        matricula, created = Matricula.objects.get_or_create(
+            usuario=request.user,
+            curso_id=curso_id,
+            defaults={'progresso': 100, 'concluido': True, 'concluido_em': timezone.now()}
+        )
+        if not created:
+            matricula.progresso = 100
+            matricula.concluido = True
+            matricula.concluido_em = timezone.now()
+            matricula.save()
+        serializer = MatriculaSerializer(matricula)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['post'], url_path='atualizar-progresso')
+    def atualizar_progresso(self, request):
+        curso_id = request.data.get('curso')
+        progresso = request.data.get('progresso', 0)
+        if not curso_id:
+            return Response({'detail': 'curso é obrigatório.'}, status=status.HTTP_400_BAD_REQUEST)
+        matricula, created = Matricula.objects.get_or_create(
+            usuario=request.user,
+            curso_id=curso_id,
+            defaults={'progresso': progresso}
+        )
+        if not created:
+            matricula.progresso = progresso
+            matricula.save()
+        serializer = MatriculaSerializer(matricula)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='status')
+    def status_curso(self, request):
+        curso_id = request.query_params.get('curso')
+        if not curso_id:
+            return Response({'detail': 'curso é obrigatório.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            matricula = Matricula.objects.get(usuario=request.user, curso_id=curso_id)
+            serializer = MatriculaSerializer(matricula)
+            return Response(serializer.data)
+        except Matricula.DoesNotExist:
+            return Response({'concluido': False, 'progresso': 0})
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -77,43 +194,26 @@ class LogAtividadeViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
 
 
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def profile_login(request):
-    email = (request.data.get('username') or request.data.get('email') or '').strip().lower()
-    password = request.data.get('password') or ''
+class FormacaoAcademicaViewSet(viewsets.ModelViewSet):
+    serializer_class = FormacaoAcademicaSerializer
+    permission_classes = [IsAuthenticated]
 
-    if not email or not password:
-        return Response({'detail': 'Informe usuário e senha.'}, status=status.HTTP_400_BAD_REQUEST)
+    def get_queryset(self):
+        return FormacaoAcademica.objects.filter(usuario=self.request.user)
 
-    profile_password = getattr(settings, 'PROFILE_LOGIN_PASSWORD', 'admin')
-    if password != profile_password:
-        return Response({'detail': 'Usuário ou senha inválidos.'}, status=status.HTTP_401_UNAUTHORIZED)
+    def perform_create(self, serializer):
+        serializer.save(usuario=self.request.user)
 
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                'SELECT id, nome, email, role FROM profiles WHERE lower(email) = %s LIMIT 1',
-                [email],
-            )
-            row = cursor.fetchone()
-    except Exception as exc:
-        return Response(
-            {'detail': 'Não foi possível consultar a tabela profiles.', 'error': str(exc)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
 
-    if not row:
-        return Response({'detail': 'Usuário ou senha inválidos.'}, status=status.HTTP_401_UNAUTHORIZED)
+class HabilidadeViewSet(viewsets.ModelViewSet):
+    serializer_class = HabilidadeSerializer
+    permission_classes = [IsAuthenticated]
 
-    return Response({
-        'user': {
-            'id': str(row[0]),
-            'nome': row[1],
-            'email': row[2],
-            'role': row[3] or 'visitor',
-        }
-    })
+    def get_queryset(self):
+        return Habilidade.objects.filter(usuario=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(usuario=self.request.user)
 
 
 from django.http import JsonResponse
@@ -270,3 +370,33 @@ def dashboard_stats(request):
     })
 
 dashboard_stats.throttle_scope = 'dashboard'
+
+
+class AssinaturaPlanoViewSet(viewsets.ModelViewSet):
+    serializer_class = AssinaturaPlanoSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return AssinaturaPlano.objects.filter(usuario=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(usuario=self.request.user)
+
+
+class AdminAssinaturaListView(generics.ListAPIView):
+    serializer_class = AssinaturaPlanoSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return AssinaturaPlano.objects.select_related('usuario', 'plano').all()
+        return AssinaturaPlano.objects.filter(usuario=self.request.user)
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        data = serializer.data
+        if request.user.is_staff:
+            for item, obj in zip(data, queryset):
+                item['usuario'] = obj.usuario.get_full_name() or obj.usuario.username
+        return Response(data)

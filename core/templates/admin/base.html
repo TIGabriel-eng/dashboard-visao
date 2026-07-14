@@ -103,6 +103,21 @@
           </a>
         </li>
 
+        <!-- Assinaturas -->
+        <li class="admin-nav-item{% if '/admin/core/assinaturaplano/' in request.path %} active{% endif %}">
+          <a href="{% url 'admin:core_assinaturaplano_changelist' %}" class="typing-nav">
+            <i class="fa-solid fa-file-invoice"></i>
+            <span class="nav-text">Assinaturas</span>
+          </a>
+        </li>
+        <!-- Permissões -->
+        <li class="admin-nav-item{% if '/admin/core/permissao/' in request.path %} active{% endif %}">
+          <a href="{% url 'admin:core_permissao_changelist' %}" class="typing-nav">
+            <i class="fa-solid fa-chart-pie"></i>
+            <span class="nav-text">Permissões</span>
+          </a>
+        </li>
+
         <!-- Ambientes -->
         <li class="admin-nav-item{% if '/admin/core/ambiente/' in request.path %} active{% endif %}">
           <a href="{% url 'admin:core_ambiente_changelist' %}" class="typing-nav">

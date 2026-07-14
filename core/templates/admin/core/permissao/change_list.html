@@ -1,0 +1,482 @@
+{% extends "admin/change_list.html" %}
+{% load i18n static %}
+
+{% block content_title %}
+  <div class="back-button-row">
+    <a href="{% url 'admin:index' %}" class="back-link anim-slide-in">
+      <i class="fa-solid fa-arrow-left"></i> Voltar ao painel
+    </a>
+  </div>
+  {{ block.super }}
+{% endblock %}
+
+{% block result_list %}
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- DASHBOARD - Visão Geral                            -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <div class="perm-dashboard">
+    <h2 class="perm-dashboard__title">
+      <i class="fa-solid fa-chart-pie"></i> Visão Geral dos Papéis
+    </h2>
+    <div class="perm-dashboard__cards">
+      <div class="perm-stat-card">
+        <div class="perm-stat-card__icon"><i class="fa-solid fa-shield-halved"></i></div>
+        <div class="perm-stat-card__info">
+          <span class="perm-stat-card__value">{{ stats.total_groups }}</span>
+          <span class="perm-stat-card__label">Papéis</span>
+        </div>
+      </div>
+      <div class="perm-stat-card">
+        <div class="perm-stat-card__icon perm-stat-card__icon--blue"><i class="fa-solid fa-key"></i></div>
+        <div class="perm-stat-card__info">
+          <span class="perm-stat-card__value">{{ stats.total_perms }}</span>
+          <span class="perm-stat-card__label">Permissões</span>
+        </div>
+      </div>
+      <div class="perm-stat-card">
+        <div class="perm-stat-card__icon perm-stat-card__icon--green"><i class="fa-solid fa-users"></i></div>
+        <div class="perm-stat-card__info">
+          <span class="perm-stat-card__value">{{ stats.total_users }}</span>
+          <span class="perm-stat-card__label">Usuários Ativos</span>
+        </div>
+      </div>
+    </div>
+
+    {% if stats.groups %}
+    <table class="perm-dashboard__table">
+      <thead>
+        <tr>
+          <th>Papel</th>
+          <th>Permissões</th>
+          <th>Usuários</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for group in stats.groups %}
+        <tr>
+          <td class="perm-dashboard__group-name">
+            <a href="{% url 'admin:core_permissao_change' group.pk %}">{{ group.name }}</a>
+          </td>
+          <td>
+            <span class="perm-badge perm-badge--perms">{{ group.num_perms }}</span>
+          </td>
+          <td>
+            <span class="perm-badge perm-badge--users">{{ group.num_users }}</span>
+          </td>
+          <td class="perm-dashboard__actions">
+            <a href="{% url 'admin:core_permissao_change' group.pk %}" class="perm-action-btn perm-action-btn--edit" title="Editar">
+              <i class="fa-solid fa-pencil"></i>
+            </a>
+            <a href="{% url 'admin:core_permissao_duplicar' group.pk %}" class="perm-action-btn perm-action-btn--duplicate" title="Duplicar" onclick="return confirm('Duplicar grupo &quot;{{ group.name|escapejs }}&quot;?')">
+              <i class="fa-solid fa-copy"></i>
+            </a>
+            <a href="{% url 'admin:core_permissao_delete' group.pk %}" class="perm-action-btn perm-action-btn--delete" title="Excluir">
+              <i class="fa-solid fa-trash"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- TEMPLATES DE PAPÉIS                                -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <div class="perm-templates">
+    <h2 class="perm-templates__title">
+      <i class="fa-solid fa-wand-magic-sparkles"></i> Criar Papel a partir de Template
+    </h2>
+    <p class="perm-templates__help">Selecione um template para criar um grupo já configurado com as permissões corretas.</p>
+    <div class="perm-templates__grid">
+      {% for key, tpl in role_templates.items %}
+      <a href="{% url 'admin:core_permissao_criar_template' key %}"
+         class="perm-template-card"
+         onclick="return confirm('Criar o papel &quot;{{ tpl.name|escapejs }}&quot;?')">
+        <div class="perm-template-card__icon" style="background: {{ tpl.color }}20; color: {{ tpl.color }}; border-color: {{ tpl.color }}40;">
+          <i class="{{ tpl.icon }}"></i>
+        </div>
+        <div class="perm-template-card__info">
+          <span class="perm-template-card__name">{{ tpl.name }}</span>
+          <span class="perm-template-card__desc">{{ tpl.description }}</span>
+        </div>
+        <i class="perm-template-card__arrow fa-solid fa-arrow-right"></i>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- LISTA PADRÃO                                       -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  {{ block.super }}
+
+  <style>
+    /* ── Dashboard ── */
+    .perm-dashboard {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .perm-dashboard__title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 20px;
+    }
+
+    .perm-dashboard__title i {
+      color: var(--accent-orange);
+    }
+
+    .perm-dashboard__cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .perm-stat-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      transition: border-color 0.2s;
+    }
+
+    .perm-stat-card:hover {
+      border-color: var(--accent-orange);
+    }
+
+    .perm-stat-card__icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: rgba(255, 157, 0, 0.1);
+      border: 1px solid rgba(255, 157, 0, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent-orange);
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .perm-stat-card__icon--blue {
+      background: rgba(59, 130, 246, 0.1);
+      border-color: rgba(59, 130, 246, 0.2);
+      color: #60a5fa;
+    }
+
+    .perm-stat-card__icon--green {
+      background: rgba(16, 185, 129, 0.1);
+      border-color: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+    }
+
+    .perm-stat-card__info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .perm-stat-card__value {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.1;
+    }
+
+    .perm-stat-card__label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .perm-dashboard__table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .perm-dashboard__table th {
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 10px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .perm-dashboard__table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-primary);
+      font-size: 13px;
+    }
+
+    .perm-dashboard__table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .perm-dashboard__table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .perm-dashboard__group-name a {
+      color: var(--text-primary);
+      font-weight: 500;
+      text-decoration: none;
+    }
+
+    .perm-dashboard__group-name a:hover {
+      color: var(--accent-orange);
+    }
+
+    .perm-badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .perm-badge--perms {
+      background: rgba(59, 130, 246, 0.15);
+      color: #60a5fa;
+    }
+
+    .perm-badge--users {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+    }
+
+    .perm-dashboard__actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .perm-action-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-size: 13px;
+      transition: all 0.15s;
+    }
+
+    .perm-action-btn--edit { color: #60a5fa; }
+    .perm-action-btn--edit:hover { background: rgba(59, 130, 246, 0.15); }
+    .perm-action-btn--duplicate { color: var(--accent-orange); }
+    .perm-action-btn--duplicate:hover { background: rgba(255, 157, 0, 0.15); }
+    .perm-action-btn--delete { color: #f87171; }
+    .perm-action-btn--delete:hover { background: rgba(239, 68, 68, 0.15); }
+
+    /* ── Templates ── */
+    .perm-templates {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .perm-templates__title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 6px;
+    }
+
+    .perm-templates__title i {
+      color: var(--accent-orange);
+    }
+
+    .perm-templates__help {
+      color: var(--text-muted);
+      font-size: 12px;
+      margin: 0 0 20px;
+    }
+
+    .perm-templates__grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+    }
+
+    .perm-template-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      text-decoration: none;
+      color: var(--text-primary);
+      transition: all 0.2s;
+    }
+
+    .perm-template-card:hover {
+      border-color: var(--accent-orange);
+      background: var(--bg-surface-2);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .perm-template-card__icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+      border: 1px solid;
+    }
+
+    .perm-template-card__info {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .perm-template-card__name {
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--text-primary);
+    }
+
+    .perm-template-card__desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .perm-template-card__arrow {
+      color: var(--text-muted);
+      font-size: 12px;
+      transition: transform 0.2s;
+    }
+
+    .perm-template-card:hover .perm-template-card__arrow {
+      transform: translateX(3px);
+      color: var(--accent-orange);
+    }
+
+    /* ── Responsivo ── */
+    @media (max-width: 768px) {
+      .perm-dashboard__cards {
+        grid-template-columns: 1fr;
+      }
+
+      .perm-templates__grid {
+        grid-template-columns: 1fr;
+      }
+
+      .perm-dashboard__table {
+        font-size: 12px;
+      }
+    }
+
+    @keyframes anim-slide {
+      from { opacity: 0; transform: translateX(-16px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    .anim-slide-in {
+      animation: anim-slide .35s ease-out;
+    }
+  </style>
+
+  <script>
+  (function() {
+    var table = document.getElementById('result_list');
+    if (!table) return;
+
+    var baseUrl = window.location.pathname.replace(/\/+$/, '');
+
+    var headerRow = table.querySelector('thead tr');
+    if (headerRow && !headerRow.querySelector('.column-actions')) {
+      var th = document.createElement('th');
+      th.scope = 'col';
+      th.className = 'column-actions';
+      th.textContent = 'Ações';
+      headerRow.appendChild(th);
+    }
+
+    var rows = table.querySelectorAll('tbody tr');
+    rows.forEach(function(row) {
+      var checkbox = row.querySelector('.action-select');
+      if (!checkbox) return;
+
+      var pk = checkbox.value;
+
+      var td = document.createElement('td');
+      td.className = 'field-actions';
+
+      var actionsDiv = document.createElement('div');
+      actionsDiv.className = 'row-actions';
+
+      var editLink = document.createElement('a');
+      editLink.href = baseUrl + '/' + pk + '/change/';
+      editLink.className = 'row-action-btn row-action-btn--edit';
+      editLink.title = 'Editar';
+      editLink.innerHTML = '<i class="fa-solid fa-pencil"></i>';
+      actionsDiv.appendChild(editLink);
+
+      var dupLink = document.createElement('a');
+      dupLink.href = baseUrl + '/' + pk + '/duplicar/';
+      dupLink.className = 'row-action-btn';
+      dupLink.title = 'Duplicar';
+      dupLink.style.color = '#f59e0b';
+      dupLink.innerHTML = '<i class="fa-solid fa-copy"></i>';
+      dupLink.addEventListener('click', function(e) {
+        var rowNameEl = row.querySelector('th[scope="row"] a, th a, th');
+        var itemName = rowNameEl ? rowNameEl.textContent.trim() : 'este item';
+        if (!confirm('Duplicar grupo "' + itemName + '"?')) {
+          e.preventDefault();
+        }
+      });
+      actionsDiv.appendChild(dupLink);
+
+      var deleteLink = document.createElement('a');
+      deleteLink.href = baseUrl + '/' + pk + '/delete/';
+      deleteLink.className = 'row-action-btn row-action-btn--delete';
+      deleteLink.title = 'Excluir';
+      deleteLink.innerHTML = '<i class="fa-solid fa-trash"></i>';
+      actionsDiv.appendChild(deleteLink);
+
+      td.appendChild(actionsDiv);
+      row.appendChild(td);
+
+      checkbox.addEventListener('change', function() {
+        actionsDiv.classList.toggle('is-visible', this.checked);
+      });
+    });
+  })();
+  </script>
+{% endblock %}

@@ -8,6 +8,10 @@ router.register(r'trilhas', views.TrilhaViewSet, basename='trilha')
 router.register(r'eventos', views.EventoViewSet, basename='evento')
 router.register(r'novidades', views.NovidadeViewSet, basename='novidade')
 router.register(r'logs', views.LogAtividadeViewSet, basename='log')
+router.register(r'matriculas', views.MatriculaViewSet, basename='matricula')
+router.register(r'formacoes', views.FormacaoAcademicaViewSet, basename='formacao')
+router.register(r'habilidades', views.HabilidadeViewSet, basename='habilidade')
+router.register(r'assinaturas', views.AssinaturaPlanoViewSet, basename='assinatura')
 
 urlpatterns = [
     path('', include(router.urls)),
@@ -16,4 +20,5 @@ urlpatterns = [
     path('corrigir-texto/', views.corrigir_texto, name='corrigir-texto'),
     path('register/', views.RegisterView.as_view(), name='register'),
     path('me/', views.MeView.as_view(), name='me'),
+    path('admin-assinaturas/', views.AdminAssinaturaListView.as_view(), name='admin-assinaturas'),
 ]
