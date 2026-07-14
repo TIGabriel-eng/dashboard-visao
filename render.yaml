@@ -6,7 +6,7 @@ services:
     startCommand: gunicorn orcoma_academy.wsgi:application
     envVars:
       - key: SECRET_KEY
-        generateValue: true
+        value: "orcoma-academy-secret-key-mude-para-uma-segura"
       - key: DEBUG
         value: "False"
       - key: DATABASE_URL
