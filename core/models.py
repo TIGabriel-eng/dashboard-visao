@@ -304,6 +304,7 @@ class LogAtividade(models.Model):
 class Perfil(models.Model):
     ROLE_CHOICES = [
         ('admin', 'Administrador'),
+        ('cliente_premium', 'Cliente Premium'),
         ('cliente_orcoma', 'Cliente Orcoma'),
         ('empresario', 'Empresário Não Cliente'),
         ('cliente_equipe', 'Cliente Equipe'),

@@ -3,7 +3,7 @@ from django.contrib.auth.models import AnonymousUser
 from core.models import Ambiente, AcessoRoleAcademia, Perfil
 
 
-ROLES_ACESSO_TOTAL = {'admin', 'gestor_orcoma'}
+ROLES_ACESSO_TOTAL = {'admin', 'gestor_orcoma', 'cliente_premium'}
 
 
 def get_user_role(user):
