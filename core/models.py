@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User, Group
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils.text import slugify
 
 from core.validators import validate_video_file
 
@@ -104,6 +105,7 @@ class Curso(models.Model):
     ]
 
     titulo = models.CharField(max_length=255)
+    slug = models.SlugField(max_length=255, unique=True, blank=True, help_text='Identificador único no URL (ex: reforma-tributaria)')
     tipo = models.CharField(max_length=10, choices=TIPO_CHOICES, default='curso')
     descricao = models.TextField(blank=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='rascunho')
@@ -165,6 +167,17 @@ class Curso(models.Model):
     def __str__(self):
         return self.titulo
 
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base_slug = slugify(self.titulo)
+            slug = base_slug
+            counter = 1
+            while Curso.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f'{base_slug}-{counter}'
+                counter += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
+
     def user_can_access(self, user):
         from core.services.acesso import user_can_access_curso
         return user_can_access_curso(self, user)
@@ -196,6 +209,61 @@ class Video(models.Model):
 
     def __str__(self):
         return f'{self.curso.titulo} — {self.titulo}'
+
+
+class Modulo(models.Model):
+    """Módulo de um curso - agrupa vídeos e materiais relacionados"""
+    curso = models.ForeignKey(Curso, on_delete=models.CASCADE, related_name='modulos')
+    titulo = models.CharField(max_length=255)
+    descricao = models.TextField(blank=True)
+    ordem = models.PositiveIntegerField(default=0, verbose_name='Ordem')
+    ativo = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Módulo'
+        verbose_name_plural = 'Módulos'
+        ordering = ['ordem', 'id']
+
+    def __str__(self):
+        return f'{self.curso.titulo} — {self.titulo}'
+
+
+class Material(models.Model):
+    """Materiais de apoio (PDFs, XLS, ZIP) vinculados a módulos"""
+    MODALIDADE_CHOICES = [
+        ('pdf', 'PDF'),
+        ('xls', 'Excel'),
+        ('xlsx', 'Excel (XLSX)'),
+        ('zip', 'ZIP'),
+        ('link', 'Link Externo'),
+    ]
+    
+    modulo = models.ForeignKey(Modulo, on_delete=models.CASCADE, related_name='materiais')
+    titulo = models.CharField(max_length=255)
+    arquivo = models.FileField(
+        upload_to='cursos/materiais/',
+        blank=True,
+        null=True,
+        verbose_name='Arquivo',
+    )
+    url_externa = models.URLField(
+        blank=True,
+        verbose_name='URL externa',
+        help_text='Use quando o arquivo estiver hospedado em outro lugar.',
+    )
+    modalidade = models.CharField(max_length=10, choices=MODALIDADE_CHOICES, default='pdf')
+    ordem = models.PositiveIntegerField(default=0, verbose_name='Ordem')
+    ativo = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Material'
+        verbose_name_plural = 'Materiais'
+        ordering = ['ordem', 'id']
+
+    def __str__(self):
+        return f'{self.modulo.curso.titulo} — {self.titulo}'
 
 
 class Trilha(models.Model):
@@ -254,6 +322,15 @@ class Matricula(models.Model):
     progresso = models.PositiveIntegerField(default=0, help_text='Percentual 0-100')
     concluido = models.BooleanField(default=False)
     concluido_em = models.DateTimeField(null=True, blank=True)
+    ultimo_segundo_assistido = models.PositiveIntegerField(default=0, help_text='Último segundo do vídeo assistido')
+    video_corrente = models.ForeignKey(
+        'Video',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='matriculas_ultimo_video',
+        help_text='Último vídeo acessado pelo aluno neste curso'
+    )
 
     class Meta:
         verbose_name = 'Matrícula'
@@ -263,6 +340,26 @@ class Matricula(models.Model):
 
     def __str__(self):
         return f'{self.usuario} - {self.curso}'
+
+
+class Certificado(models.Model):
+    matricula = models.OneToOneField(Matricula, on_delete=models.CASCADE, related_name='certificado')
+    codigo = models.CharField(max_length=30, unique=True, help_text='Código único de validação do certificado')
+    emitido_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Certificado'
+        verbose_name_plural = 'Certificados'
+        ordering = ['-emitido_em']
+
+    def __str__(self):
+        return f'Certificado {self.codigo} - {self.matricula.curso.titulo}'
+
+    def save(self, *args, **kwargs):
+        if not self.codigo:
+            import uuid
+            self.codigo = 'ORC-' + uuid.uuid4().hex[:8].upper()
+        super().save(*args, **kwargs)
 
 
 class Novidade(models.Model):

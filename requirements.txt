@@ -8,8 +8,12 @@ sqlparse==0.5.5
 tzdata==2026.2
 google-genai==2.10.0
 dj-database-url
+python-dotenv
 psycopg2-binary
 whitenoise
 gunicorn==23.0.0
 djangorestframework
 Pillow>=10.0.0
+django-storages[boto3]
+boto3
+reportlab>=4.0.0

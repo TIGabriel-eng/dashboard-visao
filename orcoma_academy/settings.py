@@ -13,6 +13,9 @@ import os
 from pathlib import Path
 from datetime import timedelta
 import dj_database_url
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parent.parent / '.env')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -30,6 +33,25 @@ ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',') if os.environ.get
 
 
 # Application definition
+
+# Garante cria/atualiza admin/painel após migrate
+from django.db.models.signals import post_migrate
+from django.dispatch import receiver
+
+@receiver(post_migrate)
+def ensure_admin_panel(sender, **kwargs):
+    try:
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        if sender.name in ('django.contrib.admin', 'core'):
+            user, _ = User.objects.get_or_create(username='admin')
+            if not user.is_staff:
+                user.is_staff = True
+                user.is_superuser = True
+                user.save()
+    except Exception:
+        pass
+
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -141,7 +163,24 @@ STATICFILES_DIRS = [
 
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
+# Backblaze B2 (media files)
+AWS_S3_ENDPOINT_URL = "https://s3.us-west-004.backblazeb2.com"
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+AWS_STORAGE_BUCKET_NAME = "orcoma-media"
+AWS_S3_REGION_NAME = "us-west-004"
+AWS_DEFAULT_ACL = None
+AWS_QUERYSTRING_AUTH = True
+AWS_QUERYSTRING_EXPIRE = 900
 
 # Media files (uploads)
 MEDIA_URL = '/media/'

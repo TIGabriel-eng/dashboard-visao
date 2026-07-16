@@ -7,7 +7,7 @@ from django.utils.html import format_html
 from django.urls import path, reverse
 from django.db.models import Count, Q
 from django.contrib.auth import get_user_model
-from .models import Curso, Video, Trilha, Evento, Novidade, LogAtividade, Cliente, CursoVisualizacao, Matricula, Plano, Ambiente, Perfil, Permissao, FormacaoAcademica, Habilidade, AssinaturaPlano
+from .models import Curso, Video, Modulo, Material, Trilha, Evento, Novidade, LogAtividade, Cliente, CursoVisualizacao, Matricula, Plano, Ambiente, Perfil, Permissao, FormacaoAcademica, Habilidade, AssinaturaPlano
 from .forms import CursoAdminForm
 
 User = get_user_model()
@@ -426,19 +426,33 @@ class VideoInline(admin.TabularInline):
     ordering = ('ordem',)
 
 
+class MaterialInline(admin.TabularInline):
+    model = Material
+    extra = 0
+    fields = ('titulo', 'arquivo', 'url_externa', 'modalidade', 'ordem', 'ativo')
+    ordering = ('ordem',)
+
+
+class ModuloInline(admin.TabularInline):
+    model = Modulo
+    extra = 0
+    fields = ('titulo', 'descricao', 'ordem', 'ativo')
+    ordering = ('ordem',)
+
+
 @admin.register(Curso)
 class CursoAdmin(admin.ModelAdmin):
     form = CursoAdminForm
-    inlines = [VideoInline]
+    inlines = [VideoInline, ModuloInline]
     list_display = ('titulo', 'tipo', 'ambiente', 'status', 'is_gratuito', 'video_display', 'created_at')
     list_filter = ('tipo', 'status', 'ambiente', 'is_gratuito')
-    search_fields = ('titulo', 'descricao')
+    search_fields = ('titulo', 'descricao', 'slug')
     list_editable = ('status',)
     date_hierarchy = 'created_at'
     filter_horizontal = ('academias_extras',)
     fieldsets = (
         (None, {
-            'fields': ('titulo', 'tipo', 'descricao', 'status')
+            'fields': ('titulo', 'slug', 'tipo', 'descricao', 'status')
         }),
         ('Acesso', {
             'fields': ('ambiente', 'is_gratuito', 'roles_extras', 'academias_extras'),
@@ -455,6 +469,21 @@ class CursoAdmin(admin.ModelAdmin):
             return '✅ Vídeo carregado'
         return '❌ Sem vídeo'
     video_display.short_description = 'Vídeo'
+
+
+@admin.register(Modulo)
+class ModuloAdmin(admin.ModelAdmin):
+    inlines = [MaterialInline]
+    list_display = ('titulo', 'curso', 'ordem', 'ativo')
+    list_filter = ('curso', 'ativo')
+    search_fields = ('titulo', 'curso__titulo')
+
+
+@admin.register(Material)
+class MaterialAdmin(admin.ModelAdmin):
+    list_display = ('titulo', 'modulo', 'modalidade', 'ordem', 'ativo')
+    list_filter = ('modalidade', 'ativo')
+    search_fields = ('titulo', 'modulo__titulo')
 
 
 @admin.register(Trilha)

@@ -4,6 +4,7 @@ from . import views
 
 router = DefaultRouter()
 router.register(r'cursos', views.CursoViewSet, basename='curso')
+router.register(r'modulos', views.ModuloViewSet, basename='modulo')
 router.register(r'trilhas', views.TrilhaViewSet, basename='trilha')
 router.register(r'eventos', views.EventoViewSet, basename='evento')
 router.register(r'novidades', views.NovidadeViewSet, basename='novidade')
@@ -22,4 +23,10 @@ urlpatterns = [
     path('register/', views.RegisterView.as_view(), name='register'),
     path('me/', views.MeView.as_view(), name='me'),
     path('admin-assinaturas/', views.AdminAssinaturaListView.as_view(), name='admin-assinaturas'),
+    path('user-permissions/', views.user_permissions, name='user-permissions'),
+    path('cursos/<slug:slug>/modulos/', views.curso_modulos, name='curso-modulos'),
+    path('modulos/<int:pk>/materiais/', views.modulo_materiais, name='modulo-materiais'),
+    path('certificados/', views.listar_certificados, name='listar-certificados'),
+    path('certificados/<int:pk>/download/', views.download_certificado, name='download-certificado'),
+    path('busca/', views.busca, name='busca'),
 ]

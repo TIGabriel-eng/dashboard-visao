@@ -6,7 +6,8 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import (
     Curso, Trilha, Evento, Novidade, LogAtividade, Perfil, Matricula,
-    FormacaoAcademica, Habilidade, AssinaturaPlano, Video,
+    FormacaoAcademica, Habilidade, AssinaturaPlano, Video, Modulo, Material,
+    Certificado,
 )
 from core.services.acesso import user_can_access_curso, get_user_role
 
@@ -132,11 +133,12 @@ class LogAtividadeSerializer(serializers.ModelSerializer):
 
 class MatriculaSerializer(serializers.ModelSerializer):
     curso_titulo = serializers.CharField(source='curso.titulo', read_only=True)
+    video_corrente_id = serializers.IntegerField(source='video_corrente.id', read_only=True, default=None)
 
     class Meta:
         model = Matricula
-        fields = ('id', 'usuario', 'curso', 'curso_titulo', 'data_inscricao', 'progresso', 'concluido', 'concluido_em')
-        read_only_fields = ('id', 'usuario', 'data_inscricao', 'concluido_em')
+        fields = ('id', 'usuario', 'curso', 'curso_titulo', 'data_inscricao', 'progresso', 'concluido', 'concluido_em', 'ultimo_segundo_assistido', 'video_corrente', 'video_corrente_id')
+        read_only_fields = ('id', 'usuario', 'data_inscricao', 'concluido_em', 'video_corrente_id')
 
 
 class MatriculaCreateSerializer(serializers.ModelSerializer):
@@ -289,3 +291,71 @@ class AssinaturaPlanoSerializer(serializers.ModelSerializer):
             return 100
         usado = total - max((obj.data_expiracao - date.today()).days, 0)
         return min(round((usado / total) * 100), 100)
+
+
+class ModuloSerializer(serializers.ModelSerializer):
+    curso_titulo = serializers.CharField(source='curso.titulo', read_only=True)
+    materiais = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Modulo
+        fields = ('id', 'curso', 'curso_titulo', 'titulo', 'descricao', 'ordem', 'ativo', 'materiais')
+
+    def get_materiais(self, obj):
+        request = self.context.get('request')
+        materiais = obj.materiais.filter(ativo=True).order_by('ordem')
+        return MaterialSerializer(materiais, many=True, context=self.context).data
+
+
+class MaterialSerializer(serializers.ModelSerializer):
+    arquivo_url = serializers.SerializerMethodField()
+    curso_titulo = serializers.CharField(source='modulo.curso.titulo', read_only=True)
+
+    class Meta:
+        model = Material
+        fields = ('id', 'modulo', 'curso_titulo', 'titulo', 'arquivo', 'arquivo_url', 'url_externa', 'modalidade', 'ordem', 'ativo')
+
+    def get_arquivo_url(self, obj):
+        if not obj.arquivo:
+            return None
+        request = self.context.get('request')
+        user = request.user if request else None
+        # Check access through the course
+        if user_can_access_curso(obj.modulo.curso, user):
+            if request:
+                return request.build_absolute_uri(obj.arquivo.url)
+            return obj.arquivo.url
+        return None
+
+
+class CertificadoSerializer(serializers.ModelSerializer):
+    curso_titulo = serializers.CharField(source='matricula.curso.titulo', read_only=True)
+    curso_duracao = serializers.SerializerMethodField()
+    aluno_nome = serializers.SerializerMethodField()
+    download_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Certificado
+        fields = ('id', 'codigo', 'emitido_em', 'curso_titulo', 'curso_duracao', 'aluno_nome', 'download_url')
+
+    def get_curso_duracao(self, obj):
+        videos = obj.matricula.curso.videos.filter(ativo=True)
+        total_segundos = 0
+        for v in videos:
+            if hasattr(v, 'duracao') and v.duracao:
+                total_segundos += v.duracao
+        if total_segundos > 0:
+            horas = total_segundos // 3600
+            minutos = (total_segundos % 3600) // 60
+            return f'{horas}h{minutos:02d}m' if horas > 0 else f'{minutos}min'
+        return None
+
+    def get_aluno_nome(self, obj):
+        user = obj.matricula.usuario
+        return user.get_full_name() or user.username
+
+    def get_download_url(self, obj):
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(f'/api/certificados/{obj.id}/download/')
+        return f'/api/certificados/{obj.id}/download/'
