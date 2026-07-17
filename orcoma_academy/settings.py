@@ -25,7 +25,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('SECRET_KEY', 'orcoma-academy-secret-key-mude-para-uma-segura')
+SECRET_KEY = os.environ.get('SECRET_KEY', '')
+if not SECRET_KEY and not DEBUG:
+    raise ValueError('SECRET_KEY must be set in production via environment variable.')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
