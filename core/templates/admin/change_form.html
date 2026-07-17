@@ -109,77 +109,6 @@
       flex-shrink: 0;
     }
     .admin-toast__close:hover { opacity: 1; }
-
-    .video-modal__overlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.7);
-      z-index: 1000;
-    }
-    .video-modal__content {
-      position: fixed;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      background: #fff;
-      border-radius: 12px;
-      padding: 24px;
-      z-index: 1001;
-      max-width: 800px;
-      width: 90%;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-    }
-    .video-modal__close {
-      position: absolute;
-      top: -12px; right: -12px;
-      width: 32px; height: 32px;
-      border-radius: 50%;
-      border: none;
-      background: #1e3a5f;
-      color: #fff;
-      font-size: 18px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      line-height: 1;
-    }
-    .video-modal__close:hover { background: #d32f2f; }
-    .video-modal__title {
-      font-family: 'DM Sans', sans-serif;
-      font-size: 16px;
-      font-weight: 600;
-      color: #1e3a5f;
-      margin: 0 0 16px;
-    }
-    .video-modal__player {
-      width: 100%;
-      max-height: 70vh;
-      border-radius: 8px;
-      background: #000;
-    }
-
-    .preview-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 14px;
-      margin: 8px 0;
-      background: #1e3a5f;
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 13px;
-      font-weight: 500;
-      transition: background .2s;
-    }
-    .preview-btn:hover { background: #2d5a8e; }
-    .preview-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .preview-btn--live {
-      background: #047857;
-    }
-    .preview-btn--live:hover { background: #059669; }
   </style>
 {% endblock %}
 
@@ -194,18 +123,6 @@
 
 {% block field_sets %}
   {{ block.super }}
-  {% if opts.model_name == 'curso' %}
-  <div id="videoPreviewModal" class="video-modal" style="display:none;">
-    <div class="video-modal__overlay" onclick="closeVideoPreview()"></div>
-    <div class="video-modal__content">
-      <button type="button" class="video-modal__close" onclick="closeVideoPreview()">&times;</button>
-      <h3 class="video-modal__title">Preview do Vídeo</h3>
-      <video id="videoPreviewPlayer" class="video-modal__player" controls preload="metadata">
-        Seu navegador não suporta vídeo HTML5.
-      </video>
-    </div>
-  </div>
-  {% endif %}
 {% endblock %}
 
 {% block admin_change_form_document_ready %}
@@ -221,72 +138,6 @@
 
   <script>
     (function() {
-      /* -- Video Preview -- */
-      {% if opts.model_name == 'curso' and original and original.video %}
-      document.addEventListener('DOMContentLoaded', function() {
-        var fieldRow = document.querySelector('.form-row.field-video');
-        if (!fieldRow) return;
-        var btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'preview-btn';
-        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Preview do Vídeo';
-        btn.addEventListener('click', function() {
-          var modal = document.getElementById('videoPreviewModal');
-          var player = document.getElementById('videoPreviewPlayer');
-          if (modal && player) {
-            player.src = '{{ original.video.url }}';
-            modal.style.display = 'block';
-            player.play().catch(function(){});
-          }
-        });
-        fieldRow.querySelector('.field-box')?.appendChild(btn) || fieldRow.appendChild(btn);
-      });
-      {% endif %}
-
-      window.closeVideoPreview = function() {
-        var modal = document.getElementById('videoPreviewModal');
-        var player = document.getElementById('videoPreviewPlayer');
-        if (modal) modal.style.display = 'none';
-        if (player) { player.pause(); player.removeAttribute('src'); player.load(); }
-      };
-
-      document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') closeVideoPreview();
-      });
-
-      /* -- Live preview on file select (for new/not-yet-saved) -- */
-      var _lastObjectURL = null;
-      document.addEventListener('change', function(e) {
-        if (e.target.name === 'video') {
-          var file = e.target.files[0];
-          if (!file) return;
-          var btn = document.querySelector('.preview-btn');
-          if (btn) btn.style.display = 'none';
-          var liveBtn = document.querySelector('.preview-btn--live');
-          if (!liveBtn) {
-            liveBtn = document.createElement('button');
-            liveBtn.type = 'button';
-            liveBtn.className = 'preview-btn preview-btn--live';
-            liveBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Preview (não salvo)';
-            var fieldRow = document.querySelector('.form-row.field-video .field-box');
-            if (fieldRow) fieldRow.appendChild(liveBtn);
-          } else {
-            liveBtn.style.display = '';
-          }
-          liveBtn.onclick = function() {
-            var modal = document.getElementById('videoPreviewModal');
-            var player = document.getElementById('videoPreviewPlayer');
-            if (modal && player) {
-              if (_lastObjectURL) URL.revokeObjectURL(_lastObjectURL);
-              _lastObjectURL = URL.createObjectURL(file);
-              player.src = _lastObjectURL;
-              modal.style.display = 'block';
-              player.play().catch(function(){});
-            }
-          };
-        }
-      });
-
       /* -- Toast -- */
       function mostrarToast(mensagem, tipo) {
         tipo = tipo || 'erro';
@@ -363,6 +214,96 @@
           });
         });
       }
+
+      /* -- Curso Admin: Ambiance Clone -- */
+      {% if opts.model_name == 'curso' %}
+      document.addEventListener('DOMContentLoaded', function() {
+        var ambienteRow = document.querySelector('.form-row.field-ambiente');
+        if (!ambienteRow) return;
+
+        var originalSelect = ambienteRow.querySelector('select[name="ambiente"]');
+        if (!originalSelect) return;
+
+        var container = document.createElement('div');
+        container.id = 'extraAmbientesContainer';
+        container.style.marginTop = '10px';
+        ambienteRow.appendChild(container);
+
+        var addBtn = document.createElement('button');
+        addBtn.type = 'button';
+        addBtn.className = 'add-related';
+        addBtn.title = 'Adicionar outra Academy';
+        addBtn.textContent = '+';
+        addBtn.style.marginTop = '8px';
+        addBtn.style.display = 'inline-flex';
+        addBtn.style.alignItems = 'center';
+        addBtn.style.gap = '6px';
+        addBtn.style.padding = '6px 14px';
+        addBtn.style.borderRadius = '6px';
+        addBtn.style.fontSize = '13px';
+        addBtn.style.fontWeight = '600';
+        addBtn.style.cursor = 'pointer';
+        addBtn.style.border = '1px solid #16a34a';
+        addBtn.style.background = 'rgba(22,163,74,0.1)';
+        addBtn.style.color = '#16a34a';
+        addBtn.style.textDecoration = 'none';
+        ambienteRow.appendChild(addBtn);
+
+        var extraIndex = 0;
+
+        addBtn.addEventListener('click', function() {
+          var wrap = document.createElement('div');
+          wrap.className = 'extra-ambiente-row';
+          wrap.style.display = 'flex';
+          wrap.style.alignItems = 'center';
+          wrap.style.gap = '8px';
+          wrap.style.marginTop = '8px';
+          wrap.style.padding = '8px 10px';
+          wrap.style.background = 'var(--bg-surface-2, #102542)';
+          wrap.style.borderRadius = '8px';
+          wrap.style.border = '1px solid var(--border-color, #1e3350)';
+
+          var clone = originalSelect.cloneNode(true);
+          clone.name = 'academias_extras';
+          clone.id = 'id_academias_extras_extra_' + extraIndex;
+          clone.removeAttribute('required');
+          clone.style.flex = '1';
+          clone.style.minWidth = '0';
+          extraIndex++;
+
+          var removeBtn = document.createElement('button');
+          removeBtn.type = 'button';
+          removeBtn.title = 'Remover';
+          removeBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
+          removeBtn.style.cssText = 'background:rgba(220,38,38,0.1);border:1px solid #dc2626;color:#dc2626;border-radius:6px;padding:6px 10px;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;justify-content:center;';
+
+          removeBtn.addEventListener('click', function() {
+            wrap.remove();
+          });
+
+          wrap.appendChild(clone);
+          wrap.appendChild(removeBtn);
+          container.appendChild(wrap);
+        });
+
+        /* -- Hide eye icon -- */
+        document.querySelectorAll('.view-related, .related-widget-wrapper-link[title="View"], .related-widget-wrapper-link[title="Visualizar"], .related-widget-wrapper-link[title="Visualizar objeto"]').forEach(function(link) {
+          link.style.display = 'none';
+        });
+
+        /* -- Fix overflow on inline titles -- */
+        document.querySelectorAll('.inline-group td').forEach(function(td) {
+          td.style.overflow = 'hidden';
+          td.style.textOverflow = 'ellipsis';
+          td.style.whiteSpace = 'nowrap';
+          td.style.maxWidth = '0';
+        });
+        document.querySelectorAll('.inline-group th').forEach(function(th) {
+          th.style.whiteSpace = 'normal';
+          th.style.wordWrap = 'break-word';
+        });
+      });
+      {% endif %}
     })();
   </script>
 {% endblock %}

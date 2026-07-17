@@ -858,3 +858,92 @@ body:not(.popup) #header {
 * {
   text-decoration: none !important;
 }
+
+/* ============================================
+   CURSO ADMIN — OCULTAR ÍCONE DE OLHO (VIEW)
+   ============================================ */
+.related-widget-wrapper .view-related,
+.related-widget-wrapper .related-widget-wrapper-link:nth-child(4),
+.related-widget-wrapper .related-widget-wrapper-link[title="View"],
+.related-widget-wrapper .related-widget-wrapper-link[title="Visualizar"] {
+  display: none !important;
+}
+
+/* ============================================
+   CURSO ADMIN — OVERFLOW NOS INLINES
+   (Videos e Módulos)
+   ============================================ */
+.inline-group .aligned label {
+  width: 120px;
+  min-width: 120px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inline-group .aligned .fieldBox input,
+.inline-group .aligned .fieldBox textarea,
+.inline-group .aligned .fieldBox select {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.inline-group table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.inline-group table th,
+.inline-group table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 0;
+}
+
+.inline-group table th {
+  white-space: normal;
+  word-wrap: break-word;
+}
+
+.inline-group .row-form-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+  max-width: 100%;
+}
+
+/* ============================================
+   CURSO ADMIN — BOTÃO + VERDE (ADICIONAR)
+   ============================================ */
+.add-related {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 4px !important;
+  background: #16a34a !important;
+  color: #fff !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  vertical-align: middle !important;
+}
+
+.add-related:hover {
+  background: #15803d !important;
+}
+
+/* ============================================
+   CURSO ADMIN — ÍCONES DE EDITAR / EXCLUIR
+   ============================================ */
+.related-widget-wrapper .related-widget-wrapper-link img {
+  filter: brightness(0) invert(1);
+  width: 14px;
+  height: 14px;
+}

@@ -320,8 +320,13 @@ def dashboard_stats(request):
         'videos_ativos': Curso.objects.filter(status='publicado', tipo='video').count(),
         'eventos_futuros': Evento.objects.filter(data__gte=agora).count(),
         'trilhas_publicadas': Trilha.objects.count(),
+        'certificados_emitidos': Certificado.objects.count(),
         'usuarios_ativos_7d': User.objects.filter(is_active=True).count(),
     }
+
+    total_matriculas = Matricula.objects.count()
+    matriculas_concluidas = Matricula.objects.filter(concluido=True).count()
+    metricas['satisfacao_alunos'] = round((matriculas_concluidas / total_matriculas) * 100) if total_matriculas > 0 else 0
 
     crescimento = []
     from django.db.models.functions import TruncMonth

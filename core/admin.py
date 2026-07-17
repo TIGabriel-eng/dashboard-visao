@@ -449,18 +449,17 @@ class CursoAdmin(admin.ModelAdmin):
     search_fields = ('titulo', 'descricao', 'slug')
     list_editable = ('status',)
     date_hierarchy = 'created_at'
-    filter_horizontal = ('academias_extras',)
     fieldsets = (
         (None, {
             'fields': ('titulo', 'slug', 'tipo', 'descricao', 'status')
         }),
         ('Acesso', {
-            'fields': ('ambiente', 'is_gratuito', 'is_recomendado', 'roles_extras', 'academias_extras'),
+            'fields': ('ambiente', 'is_gratuito', 'is_recomendado', 'roles_extras'),
             'description': 'Controle de qual academy e perfis têm acesso a este curso.',
         }),
         ('Mídia', {
-            'fields': ('video', 'thumbnail'),
-            'description': 'Faça upload do vídeo e da thumbnail (capa) do curso.',
+            'fields': ('thumbnail',),
+            'description': 'Faça upload da thumbnail (capa) do curso.',
         }),
     )
 
