@@ -444,8 +444,8 @@ class ModuloInline(admin.TabularInline):
 class CursoAdmin(admin.ModelAdmin):
     form = CursoAdminForm
     inlines = [VideoInline, ModuloInline]
-    list_display = ('titulo', 'tipo', 'ambiente', 'status', 'is_gratuito', 'video_display', 'created_at')
-    list_filter = ('tipo', 'status', 'ambiente', 'is_gratuito')
+    list_display = ('titulo', 'tipo', 'ambiente', 'status', 'is_gratuito', 'is_recomendado', 'video_display', 'created_at')
+    list_filter = ('tipo', 'status', 'ambiente', 'is_gratuito', 'is_recomendado')
     search_fields = ('titulo', 'descricao', 'slug')
     list_editable = ('status',)
     date_hierarchy = 'created_at'
@@ -455,7 +455,7 @@ class CursoAdmin(admin.ModelAdmin):
             'fields': ('titulo', 'slug', 'tipo', 'descricao', 'status')
         }),
         ('Acesso', {
-            'fields': ('ambiente', 'is_gratuito', 'roles_extras', 'academias_extras'),
+            'fields': ('ambiente', 'is_gratuito', 'is_recomendado', 'roles_extras', 'academias_extras'),
             'description': 'Controle de qual academy e perfis têm acesso a este curso.',
         }),
         ('Mídia', {

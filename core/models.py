@@ -123,6 +123,11 @@ class Curso(models.Model):
         verbose_name='Gratuito',
         help_text='Visível e acessível por todos os perfis, incluindo visitantes.',
     )
+    is_recomendado = models.BooleanField(
+        default=False,
+        verbose_name='Recomendado',
+        help_text='Aparece na seção "Recomendado para você" nas academies.',
+    )
     roles_extras = models.JSONField(
         default=list,
         blank=True,

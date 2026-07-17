@@ -19,6 +19,7 @@ urlpatterns = [
     path('ping/', views.ping, name='ping'),
     path('dashboard/', views.dashboard_stats, name='dashboard-stats'),
     path('dashboard-data/', views.dashboard_stats, name='dashboard-data'),
+    path('cursos-recomendados/', views.cursos_recomendados, name='cursos-recomendados'),
     path('corrigir-texto/', views.corrigir_texto, name='corrigir-texto'),
     path('register/', views.RegisterView.as_view(), name='register'),
     path('me/', views.MeView.as_view(), name='me'),

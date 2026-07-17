@@ -664,6 +664,19 @@ from reportlab.lib.enums import TA_CENTER
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
+def cursos_recomendados(request):
+    ambiente_id = request.query_params.get('ambiente')
+    qs = Curso.objects.filter(is_recomendado=True, status='publicado')
+    if ambiente_id:
+        qs = qs.filter(Q(ambiente_id=ambiente_id) | Q(academias_extras__id=ambiente_id))
+    qs = qs.distinct()[:5]
+    user = request.user if request.user.is_authenticated else None
+    serializer = CursoSerializer(qs, many=True, context={'request': request})
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
 def busca(request):
     query = request.query_params.get('q', '').strip()
     if len(query) < 2:
