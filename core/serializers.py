@@ -5,9 +5,9 @@ from django.contrib.auth.models import User
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import (
-    Curso, Trilha, Evento, Novidade, LogAtividade, Perfil, Matricula,
+    Curso, Trilha, Evento, Live, Novidade, LogAtividade, Perfil, Matricula,
     FormacaoAcademica, Habilidade, AssinaturaPlano, Video, Modulo, Material,
-    Certificado,
+    Certificado, MetaSemanal, Avaliacao,
 )
 from core.services.acesso import user_can_access_curso, get_user_role
 
@@ -17,7 +17,7 @@ class VideoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Video
-        fields = ('id', 'titulo', 'arquivo_url', 'url_externa', 'ordem', 'ativo')
+        fields = ('id', 'titulo', 'arquivo_url', 'url_externa', 'modulo', 'ordem', 'ativo')
 
     def get_arquivo_url(self, obj):
         if not obj.arquivo:
@@ -38,10 +38,25 @@ class CursoSerializer(serializers.ModelSerializer):
     pode_acessar = serializers.SerializerMethodField()
     ambiente_nome = serializers.CharField(source='ambiente.nome', read_only=True, default=None)
     videos = VideoSerializer(many=True, read_only=True)
+    status_matricula = serializers.SerializerMethodField()
 
     class Meta:
         model = Curso
         fields = '__all__'
+
+    def get_status_matricula(self, obj):
+        request = self.context.get('request')
+        user = request.user if request else None
+        if not user or not user.is_authenticated:
+            return 'nao_iniciado'
+        matricula = Matricula.objects.filter(usuario=user, curso=obj).first()
+        if not matricula:
+            return 'nao_iniciado'
+        if matricula.concluido:
+            return 'concluido'
+        if matricula.progresso > 0:
+            return 'em_andamento'
+        return 'nao_iniciado'
 
     def get_pode_acessar(self, obj):
         request = self.context.get('request')
@@ -117,6 +132,14 @@ class EventoSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class LiveSerializer(serializers.ModelSerializer):
+    ambiente_nome = serializers.CharField(source='ambiente.nome', read_only=True)
+
+    class Meta:
+        model = Live
+        fields = '__all__'
+
+
 class NovidadeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Novidade
@@ -134,11 +157,12 @@ class LogAtividadeSerializer(serializers.ModelSerializer):
 class MatriculaSerializer(serializers.ModelSerializer):
     curso_titulo = serializers.CharField(source='curso.titulo', read_only=True)
     video_corrente_id = serializers.IntegerField(source='video_corrente.id', read_only=True, default=None)
+    video_corrente_titulo = serializers.CharField(source='video_corrente.titulo', read_only=True, default=None)
 
     class Meta:
         model = Matricula
-        fields = ('id', 'usuario', 'curso', 'curso_titulo', 'data_inscricao', 'progresso', 'concluido', 'concluido_em', 'ultimo_segundo_assistido', 'video_corrente', 'video_corrente_id')
-        read_only_fields = ('id', 'usuario', 'data_inscricao', 'concluido_em', 'video_corrente_id')
+        fields = ('id', 'usuario', 'curso', 'curso_titulo', 'data_inscricao', 'progresso', 'concluido', 'concluido_em', 'ultimo_segundo_assistido', 'video_corrente', 'video_corrente_id', 'video_corrente_titulo')
+        read_only_fields = ('id', 'usuario', 'data_inscricao', 'concluido_em', 'video_corrente_id', 'video_corrente_titulo')
 
 
 class MatriculaCreateSerializer(serializers.ModelSerializer):
@@ -167,7 +191,7 @@ class PerfilSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Perfil
-        fields = ('role', 'role_display', 'planos', 'empresa', 'telefone', 'bio')
+        fields = ('role', 'role_display', 'planos', 'empresa', 'telefone', 'bio', 'avatar')
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -210,10 +234,11 @@ class MeSerializer(serializers.ModelSerializer):
     nome = serializers.SerializerMethodField()
     role = serializers.SerializerMethodField()
     plano_nome = serializers.SerializerMethodField()
+    avatar_url = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'nome', 'role', 'perfil', 'plano_nome', 'date_joined')
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'nome', 'role', 'perfil', 'plano_nome', 'avatar_url', 'date_joined')
 
     def get_nome(self, obj):
         return obj.get_full_name() or obj.username
@@ -229,6 +254,12 @@ class MeSerializer(serializers.ModelSerializer):
                 return planos.first().nome
             return perfil.get_role_display()
         return 'Visitante'
+
+    def get_avatar_url(self, obj):
+        perfil = getattr(obj, 'perfil', None)
+        if perfil and perfil.avatar:
+            return perfil.avatar.url
+        return ''
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -256,6 +287,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             'last_name': user.last_name,
             'role': get_user_role(user),
             'role_display': perfil.get_role_display() if perfil else 'Visitante',
+            'avatar_url': perfil.avatar.url if perfil and perfil.avatar else '',
         }
         return data
 
@@ -359,3 +391,32 @@ class CertificadoSerializer(serializers.ModelSerializer):
         if request:
             return request.build_absolute_uri(f'/api/certificados/{obj.id}/download/')
         return f'/api/certificados/{obj.id}/download/'
+
+
+class AvaliacaoSerializer(serializers.ModelSerializer):
+    usuario_nome = serializers.SerializerMethodField()
+    usuario_avatar = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Avaliacao
+        fields = ('id', 'usuario', 'usuario_nome', 'usuario_avatar', 'modulo', 'nota', 'comentario', 'created_at')
+        read_only_fields = ('id', 'usuario', 'usuario_nome', 'usuario_avatar', 'created_at')
+
+    def get_usuario_nome(self, obj):
+        return obj.usuario.get_full_name() or obj.usuario.username
+
+    def get_usuario_avatar(self, obj):
+        request = self.context.get('request')
+        if obj.usuario.perfil and obj.usuario.perfil.avatar:
+            if request:
+                return request.build_absolute_uri(obj.usuario.perfil.avatar.url)
+            return obj.usuario.perfil.avatar.url
+        return ''
+
+
+class MetaSemanalSerializer(serializers.ModelSerializer):
+    percentual = serializers.ReadOnlyField()
+
+    class Meta:
+        model = MetaSemanal
+        fields = ('id', 'titulo', 'meta_horas', 'horas_concluidas', 'semana_inicio', 'semana_fim', 'concluida', 'percentual')

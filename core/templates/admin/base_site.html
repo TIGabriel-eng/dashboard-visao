@@ -30,17 +30,5 @@
 {% endblock %}
 
 {% block content_title %}
-  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-    <h1>{{ title }}</h1>
-    <div style="display:flex;gap:8px;">
-      <form method="POST" action="{% url 'backup_database' %}" style="display:inline;">
-        {% csrf_token %}
-        <button class="btn-return-panel" type="submit">Backup DB</button>
-      </form>
-      <form method="POST" action="{% url 'restore_database' %}" style="display:inline;" onsubmit="return confirm('Isso irá restaurar o backup mais recente. Continuar?');">
-        {% csrf_token %}
-        <button class="btn-return-panel" type="submit" style="background:#fff3cd;">Restaurar DB</button>
-      </form>
-    </div>
-  </div>
+  <h1>{{ title }}</h1>
 {% endblock %}

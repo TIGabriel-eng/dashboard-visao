@@ -14,6 +14,6 @@ whitenoise
 gunicorn==23.0.0
 djangorestframework
 Pillow>=10.0.0
-django-storages[boto3]
-boto3
+django-cloudinary-storage
+cloudinary
 reportlab>=4.0.0

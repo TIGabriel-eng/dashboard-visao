@@ -190,6 +190,10 @@ class Curso(models.Model):
 
 class Video(models.Model):
     curso = models.ForeignKey(Curso, on_delete=models.CASCADE, related_name='videos')
+    modulo = models.ForeignKey(
+        'Modulo', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='videos', verbose_name='Módulo',
+    )
     titulo = models.CharField(max_length=255)
     arquivo = models.FileField(
         upload_to='cursos/videos/',
@@ -292,6 +296,7 @@ class Trilha(models.Model):
 class Evento(models.Model):
     titulo = models.CharField(max_length=255)
     descricao = models.TextField(blank=True)
+    imagem = models.ImageField(upload_to='eventos/', blank=True, null=True, verbose_name='Imagem')
     data = models.DateTimeField()
     local = models.CharField(max_length=255, blank=True)
     capacidade = models.PositiveIntegerField(default=0, help_text='0 = sem limite')
@@ -303,6 +308,46 @@ class Evento(models.Model):
         ordering = ['data']
         permissions = [
             ('gerenciar_eventos', 'Pode gerenciar eventos'),
+        ]
+
+    def __str__(self):
+        return self.titulo
+
+
+class Live(models.Model):
+    STATUS_CHOICES = [
+        ('agendada', 'Agendada'),
+        ('ao_vivo', 'Ao Vivo'),
+        ('encerrada', 'Encerrada'),
+    ]
+
+    titulo = models.CharField(max_length=255)
+    descricao = models.TextField(blank=True)
+    imagem = models.ImageField(upload_to='lives/', blank=True, null=True, verbose_name='Imagem')
+    url_externa = models.URLField(
+        blank=True,
+        help_text='Link do YouTube Live ou Vimeo Live.',
+        verbose_name='URL externa',
+    )
+    data_hora = models.DateTimeField(verbose_name='Data e hora')
+    ambiente = models.ForeignKey(
+        'Ambiente',
+        on_delete=models.PROTECT,
+        related_name='lives',
+        null=True,
+        blank=True,
+        verbose_name='Academy',
+    )
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='agendada')
+    is_gratuito = models.BooleanField(default=False, verbose_name='Gratuito')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Live'
+        verbose_name_plural = 'Lives'
+        ordering = ['-data_hora']
+        permissions = [
+            ('gerenciar_lives', 'Pode gerenciar lives'),
         ]
 
     def __str__(self):
@@ -418,9 +463,11 @@ class Perfil(models.Model):
     usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='perfil')
     role = models.CharField(max_length=30, choices=ROLE_CHOICES, default='cliente_orcoma', db_index=True)
     planos = models.ManyToManyField(Plano, blank=True, related_name='perfis')
-    empresa = models.CharField(max_length=200, blank=True)
-    telefone = models.CharField(max_length=20, blank=True)
+    empresa = models.CharField(max_length=200, blank=True, verbose_name='Empresa')
+    cnpj = models.CharField(max_length=18, blank=True, verbose_name='CNPJ da Empresa')
+    telefone = models.CharField(max_length=20, blank=True, verbose_name='Telefone Corporativo')
     bio = models.TextField(blank=True)
+    avatar = models.ImageField(upload_to='avatars/', blank=True, null=True, verbose_name='Avatar')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -435,6 +482,9 @@ class Perfil(models.Model):
 
     def __str__(self):
         return f'{self.usuario.get_full_name() or self.usuario.username} - {self.get_role_display()}'
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
 
 
 class FormacaoAcademica(models.Model):
@@ -505,7 +555,74 @@ class AssinaturaPlano(models.Model):
         return f'{self.usuario.username} - {self.plano.nome} ({labels.get(self.status, self.status)})'
 
 
+class RegraAtribuicaoPlano(models.Model):
+    cnpj = models.CharField(max_length=18, unique=True)
+    empresa = models.CharField(max_length=200)
+    plano = models.ForeignKey(Plano, on_delete=models.PROTECT, related_name='regras_atribuicao')
+    ativo = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Regra de Atribuição de Plano'
+        verbose_name_plural = 'Regras de Atribuição de Planos'
+        ordering = ['empresa']
+
+    def __str__(self):
+        return f'{self.empresa} → {self.plano.nome}'
+
+
+class MetaSemanal(models.Model):
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='metas_semanais')
+    titulo = models.CharField(max_length=255)
+    meta_horas = models.PositiveIntegerField(default=5, help_text='Meta de horas semanais')
+    horas_concluidas = models.FloatField(default=0)
+    semana_inicio = models.DateField(help_text='Início da semana')
+    semana_fim = models.DateField(help_text='Fim da semana')
+    concluida = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Meta Semanal'
+        verbose_name_plural = 'Metas Semanais'
+        ordering = ['-semana_inicio']
+
+    def __str__(self):
+        return f'{self.usuario.username} - {self.titulo}'
+
+    @property
+    def percentual(self):
+        if self.meta_horas <= 0:
+            return 0
+        return min(round((self.horas_concluidas / self.meta_horas) * 100), 100)
+
+
+class Avaliacao(models.Model):
+    """Avaliações e comentários de usuários sobre módulos"""
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='avaliacoes')
+    modulo = models.ForeignKey(Modulo, on_delete=models.CASCADE, related_name='avaliacoes')
+    nota = models.PositiveIntegerField(choices=[(i, f'{i} estrelas') for i in range(1, 6)])
+    comentario = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Avaliação'
+        verbose_name_plural = 'Avaliações'
+        ordering = ['-created_at']
+        unique_together = ['usuario', 'modulo']
+
+    def __str__(self):
+        return f'{self.usuario.username} - {self.modulo.titulo} - {self.nota}★'
+
+
 @receiver(post_save, sender=User)
 def criar_perfil_usuario(sender, instance, created, **kwargs):
     if created:
         Perfil.objects.create(usuario=instance)
+
+
+@receiver(post_save, sender=Perfil)
+def atribuir_plano_por_cnpj(sender, instance, **kwargs):
+    if instance.cnpj:
+        regra = RegraAtribuicaoPlano.objects.filter(cnpj=instance.cnpj, ativo=True).first()
+        if regra:
+            instance.planos.add(regra.plano)

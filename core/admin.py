@@ -7,7 +7,8 @@ from django.utils.html import format_html
 from django.urls import path, reverse
 from django.db.models import Count, Q
 from django.contrib.auth import get_user_model
-from .models import Curso, Video, Modulo, Material, Trilha, Evento, Novidade, LogAtividade, Cliente, CursoVisualizacao, Matricula, Plano, Ambiente, Perfil, Permissao, FormacaoAcademica, Habilidade, AssinaturaPlano
+from django import forms
+from .models import Curso, Video, Modulo, Material, Trilha, Evento, Live, Novidade, LogAtividade, Cliente, CursoVisualizacao, Matricula, Plano, Ambiente, Perfil, Permissao, FormacaoAcademica, Habilidade, AssinaturaPlano, MetaSemanal, RegraAtribuicaoPlano, AcessoRoleAcademia
 from .forms import CursoAdminForm
 
 User = get_user_model()
@@ -358,10 +359,18 @@ class PermissaoAdmin(GroupAdmin):
 class PerfilInline(admin.StackedInline):
     model = Perfil
     can_delete = False
-    verbose_name = 'Perfil'
-    verbose_name_plural = 'Perfis'
+    verbose_name = 'Informações Corporativas'
+    verbose_name_plural = 'Informações Corporativas'
     filter_horizontal = ('planos',)
-    fields = ('role', 'planos', 'empresa', 'telefone', 'bio')
+    fieldsets = (
+        ('Informações Corporativas', {
+            'fields': ('empresa', 'cnpj', 'telefone'),
+            'description': 'Preencha as informações corporativas do usuário.',
+        }),
+        ('Informações Adicionais', {
+            'fields': ('role', 'planos', 'bio'),
+        }),
+    )
 
 
 @admin.register(Cliente)
@@ -375,9 +384,6 @@ class ClienteAdmin(BaseUserAdmin):
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
         ('Informações Pessoais', {'fields': ('first_name', 'last_name', 'email')}),
-        ('Permissões', {
-            'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
-        }),
         ('Datas', {'fields': ('last_login', 'date_joined')}),
     )
 
@@ -422,7 +428,7 @@ class ClienteAdmin(BaseUserAdmin):
 class VideoInline(admin.TabularInline):
     model = Video
     extra = 0
-    fields = ('titulo', 'arquivo', 'url_externa', 'ordem', 'ativo')
+    fields = ('modulo', 'titulo', 'arquivo', 'url_externa', 'ordem', 'ativo')
     ordering = ('ordem',)
 
 
@@ -501,12 +507,32 @@ class TrilhaAdmin(admin.ModelAdmin):
     quantidade_cursos.short_description = 'Qtd. Cursos'
 
 
+class EventoForm(forms.ModelForm):
+    class Meta:
+        model = Evento
+        fields = '__all__'
+        widgets = {
+            'data': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+        }
+
+
 @admin.register(Evento)
 class EventoAdmin(admin.ModelAdmin):
+    form = EventoForm
     list_display = ('titulo', 'data', 'local')
     list_filter = ('data',)
     search_fields = ('titulo',)
     date_hierarchy = 'data'
+    fields = ('titulo', 'descricao', 'imagem', 'data', 'local', 'capacidade')
+
+
+@admin.register(Live)
+class LiveAdmin(admin.ModelAdmin):
+    list_display = ('titulo', 'data_hora', 'status', 'ambiente', 'is_gratuito')
+    list_filter = ('status', 'is_gratuito', 'ambiente')
+    search_fields = ('titulo',)
+    date_hierarchy = 'data_hora'
+    fields = ('titulo', 'descricao', 'imagem', 'url_externa', 'data_hora', 'ambiente', 'status', 'is_gratuito')
 
 
 @admin.register(Novidade)
@@ -550,8 +576,6 @@ class AmbienteAdmin(admin.ModelAdmin):
 class PlanoAdmin(admin.ModelAdmin):
     list_display = ('nome', 'preco', 'ativo', 'created_at')
     list_filter = ('ativo',)
-    search_fields = ('nome',)
-    filter_horizontal = ('ambientes',)
 
     def get_default_ambientes(self, plano):
         if plano.nome.lower() == 'plano business':
@@ -571,6 +595,14 @@ class PlanoAdmin(admin.ModelAdmin):
                 plano.ambientes.set(default_ambientes)
 
 
+@admin.register(MetaSemanal)
+class MetaSemanalAdmin(admin.ModelAdmin):
+    list_display = ('usuario', 'titulo', 'meta_horas', 'horas_concluidas', 'percentual', 'semana_inicio')
+    list_filter = ('concluida', 'semana_inicio')
+    search_fields = ('usuario__username', 'titulo')
+    readonly_fields = ('percentual',)
+
+
 @admin.register(Perfil)
 class PerfilAdmin(admin.ModelAdmin):
     list_display = ('usuario', 'role', 'empresa', 'telefone')
@@ -578,6 +610,22 @@ class PerfilAdmin(admin.ModelAdmin):
     search_fields = ('usuario__username', 'usuario__email', 'empresa')
     filter_horizontal = ('planos',)
     raw_id_fields = ('usuario',)
+
+
+@admin.register(AcessoRoleAcademia)
+class AcessoRoleAcademiaAdmin(admin.ModelAdmin):
+    list_display = ('role', 'academia', 'ativo')
+    list_filter = ('role', 'ativo', 'academia')
+    search_fields = ('role', 'academia__nome')
+    list_editable = ('ativo',)
+    ordering = ('role', 'academia__nome')
+
+
+@admin.register(RegraAtribuicaoPlano)
+class RegraAtribuicaoPlanoAdmin(admin.ModelAdmin):
+    list_display = ('empresa', 'cnpj', 'plano', 'ativo')
+    list_filter = ('ativo', 'plano')
+    search_fields = ('empresa', 'cnpj')
 
 
 @admin.register(FormacaoAcademica)

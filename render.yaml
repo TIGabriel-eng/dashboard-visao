@@ -11,9 +11,11 @@ services:
         value: "False"
       - key: DATABASE_URL
         sync: false
-      - key: AWS_ACCESS_KEY_ID
+      - key: CLOUDINARY_CLOUD_NAME
         sync: false
-      - key: AWS_SECRET_ACCESS_KEY
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
         sync: false
       - key: PYTHON_VERSION
         value: "3.12"

@@ -5,6 +5,15 @@ from core.models import Ambiente, AcessoRoleAcademia, Perfil
 
 ROLES_ACESSO_TOTAL = {'admin', 'gestor_orcoma', 'cliente_premium'}
 
+PERMISSOES_PAPEL = {
+    'cliente_orcoma': ['Academy Contábil', 'Academy Gestão Empresarial'],
+    'empresario': ['Academy Gestão Empresarial'],
+    'cliente_equipe': ['Academy Time'],
+    'colaborador_orcoma': ['Academy Orcomakers'],
+    'admin': None,  # acesso total
+    'cliente_premium': None,  # acesso total menos Academy Orcomakers
+}
+
 
 def get_user_role(user):
     if not user or isinstance(user, AnonymousUser) or not user.is_authenticated:
@@ -21,12 +30,18 @@ def get_academias_permitidas(user):
 
     role = get_user_role(user)
     if role in ROLES_ACESSO_TOTAL:
-        return Ambiente.objects.filter(ativo=True)
+        qs = Ambiente.objects.filter(ativo=True)
+        if role == 'cliente_premium':
+            qs = qs.exclude(nome__iexact='Academy Orcomakers')
+        return qs
+
+    nomes_permitidos = PERMISSOES_PAPEL.get(role, [])
+    if not nomes_permitidos:
+        return Ambiente.objects.none()
 
     return Ambiente.objects.filter(
         ativo=True,
-        acessos_role__role=role,
-        acessos_role__ativo=True,
+        nome__in=nomes_permitidos,
     ).distinct()
 
 
@@ -87,11 +102,16 @@ def filtrar_cursos_acessiveis(queryset, user):
 
 def get_academias_permitidas_para_role(role):
     if role in ROLES_ACESSO_TOTAL:
-        return Ambiente.objects.filter(ativo=True)
+        qs = Ambiente.objects.filter(ativo=True)
+        if role == 'cliente_premium':
+            qs = qs.exclude(nome__iexact='Academy Orcomakers')
+        return qs
+    nomes_permitidos = PERMISSOES_PAPEL.get(role, [])
+    if not nomes_permitidos:
+        return Ambiente.objects.none()
     return Ambiente.objects.filter(
         ativo=True,
-        acessos_role__role=role,
-        acessos_role__ativo=True,
+        nome__in=nomes_permitidos,
     ).distinct()
 
 

@@ -1,21 +1,24 @@
+import logging
 from rest_framework import viewsets, permissions, generics, status
-from .models import Curso, Trilha, Evento, Novidade, LogAtividade, CursoVisualizacao, Matricula, FormacaoAcademica, Habilidade, AssinaturaPlano, Ambiente, Modulo, Material, Certificado
+
+logger = logging.getLogger(__name__)
+from .models import Curso, Trilha, Evento, Live, Novidade, LogAtividade, CursoVisualizacao, Matricula, FormacaoAcademica, Habilidade, AssinaturaPlano, Ambiente, Modulo, Material, Certificado, MetaSemanal, Video
 from core.services.acesso import filtrar_cursos_acessiveis, user_can_access_curso, get_academias_permitidas, get_user_role, get_academias_permitidas_para_role
 from .serializers import (
     CursoSerializer, TrilhaSerializer, TrilhaListSerializer,
-    EventoSerializer, NovidadeSerializer, LogAtividadeSerializer,
+    EventoSerializer, LiveSerializer, NovidadeSerializer, LogAtividadeSerializer,
     RegisterSerializer, MeSerializer, CustomTokenObtainPairSerializer,
     MatriculaSerializer, MatriculaCreateSerializer,
     FormacaoAcademicaSerializer, HabilidadeSerializer,
     AssinaturaPlanoSerializer, ModuloSerializer, MaterialSerializer,
-    CertificadoSerializer
+    CertificadoSerializer, MetaSemanalSerializer, AvaliacaoSerializer
 )
 from django.contrib.auth.models import User
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django.db.models import Count, Q
-from django.db import connection
+from django.db import connection, models
 from django.utils import timezone
 from datetime import timedelta
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -99,6 +102,22 @@ class TrilhaViewSet(viewsets.ReadOnlyModelViewSet):
 class EventoViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Evento.objects.all()
     serializer_class = EventoSerializer
+
+
+class LiveViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Live.objects.all()
+    serializer_class = LiveSerializer
+
+
+class MetaSemanalViewSet(viewsets.ModelViewSet):
+    serializer_class = MetaSemanalSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return MetaSemanal.objects.filter(usuario=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(usuario=self.request.user)
 
 
 class NovidadeViewSet(viewsets.ReadOnlyModelViewSet):
@@ -213,9 +232,31 @@ class MatriculaViewSet(viewsets.ModelViewSet):
             return Response({'video_id': None, 'segundo': 0, 'progresso': 0, 'concluido': False})
 
 
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.http import JsonResponse
+from core.authentication import set_jwt_cookies, clear_jwt_cookies
+
+
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
     throttle_scope = 'login'
+
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == 200:
+            data = response.data
+            access = data.get('access')
+            refresh = data.get('refresh')
+            if access:
+                response = set_jwt_cookies(response, access, refresh)
+        return response
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def logout_view(request):
+    response = JsonResponse({'detail': 'Logout realizado.'}, status=status.HTTP_200_OK)
+    return clear_jwt_cookies(response)
 
 
 class RegisterView(generics.CreateAPIView):
@@ -231,6 +272,53 @@ class MeView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class AvatarUploadView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        avatar_file = request.FILES.get('avatar')
+        if not avatar_file:
+            return Response(
+                {'error': 'Nenhum arquivo enviado.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        allowed_types = ['image/jpeg', 'image/png', 'image/webp']
+        if avatar_file.content_type not in allowed_types:
+            return Response(
+                {'error': 'Formato não suportado. Use JPG, PNG ou WebP.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if avatar_file.size > 5 * 1024 * 1024:
+            return Response(
+                {'error': 'Arquivo muito grande. Máximo 5MB.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not hasattr(request.user, 'perfil'):
+            return Response(
+                {'error': 'Perfil não encontrado.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            perfil = request.user.perfil
+            perfil.avatar = avatar_file
+            perfil.save()
+        except Exception as e:
+            logger.error("Avatar upload failed for user %s: %s", request.user.pk, e, exc_info=True)
+            return Response(
+                {'error': 'Erro ao salvar avatar. Tente novamente.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        return Response({
+            'avatar_url': perfil.avatar.url,
+            'message': 'Avatar atualizado com sucesso.'
+        }, status=status.HTTP_200_OK)
 
 
 class LogAtividadeViewSet(viewsets.ReadOnlyModelViewSet):
@@ -552,47 +640,61 @@ def curso_modulos(request, slug):
     modulos = Modulo.objects.filter(curso=curso, ativo=True).order_by('ordem').prefetch_related('materiais')
     modulos_data = ModuloSerializer(modulos, many=True, context={'request': request}).data
     
-    # Verifica se o curso tem vídeos diretos (model Video) que não estão em módulos
-    videos_diretos = curso.videos.filter(ativo=True).order_by('ordem')
-    
-    if videos_diretos.exists():
-        # Converte vídeos para o formato de material
+    # Vídeos vinculados ao curso
+    videos_diretos = Video.objects.filter(curso=curso, ativo=True).order_by('ordem')
+    videos_por_modulo = {}
+    for v in videos_diretos:
+        mid = v.modulo_id if v.modulo_id else 0
+        videos_por_modulo.setdefault(mid, []).append(v)
+
+    if modulos.exists():
+        # Adiciona vídeos ao módulo correspondente
+        for md in modulos_data:
+            mid = md['id']
+            vids = videos_por_modulo.pop(mid, [])
+            if vids:
+                materiais_video = []
+                for v in vids:
+                    arquivo_url = None
+                    if v.arquivo:
+                        arquivo_url = request.build_absolute_uri(v.arquivo.url) if request else v.arquivo.url
+                    materiais_video.append({
+                        'id': v.id, 'titulo': v.titulo, 'arquivo': None,
+                        'arquivo_url': arquivo_url, 'url_externa': v.url_externa,
+                        'modalidade': 'video', 'ordem': v.ordem, 'ativo': v.ativo,
+                    })
+                md['materiais'] = materiais_video + md.get('materiais', [])
+        # Vídeos sem módulo vão para o primeiro módulo
+        vids_sem_modulo = videos_por_modulo.pop(0, [])
+        if vids_sem_modulo and modulos_data:
+            materiais_video = []
+            for v in vids_sem_modulo:
+                arquivo_url = None
+                if v.arquivo:
+                    arquivo_url = request.build_absolute_uri(v.arquivo.url) if request else v.arquivo.url
+                materiais_video.append({
+                    'id': v.id, 'titulo': v.titulo, 'arquivo': None,
+                    'arquivo_url': arquivo_url, 'url_externa': v.url_externa,
+                    'modalidade': 'video', 'ordem': v.ordem, 'ativo': v.ativo,
+                })
+            modulos_data[0]['materiais'] = materiais_video + modulos_data[0].get('materiais', [])
+    else:
+        # Sem módulos — cria módulo virtual com todos os vídeos
         materiais_video = []
         for v in videos_diretos:
             arquivo_url = None
             if v.arquivo:
-                if request:
-                    arquivo_url = request.build_absolute_uri(v.arquivo.url)
-                else:
-                    arquivo_url = v.arquivo.url
-            
+                arquivo_url = request.build_absolute_uri(v.arquivo.url) if request else v.arquivo.url
             materiais_video.append({
-                'id': v.id,
-                'titulo': v.titulo,
-                'arquivo': None,
-                'arquivo_url': arquivo_url,
-                'url_externa': v.url_externa,
-                'modalidade': 'video',
-                'ordem': v.ordem,
-                'ativo': v.ativo,
+                'id': v.id, 'titulo': v.titulo, 'arquivo': None,
+                'arquivo_url': arquivo_url, 'url_externa': v.url_externa,
+                'modalidade': 'video', 'ordem': v.ordem, 'ativo': v.ativo,
             })
-        
-        if modulos.exists():
-            # Adiciona os vídeos como materiais no primeiro módulo
-            if modulos_data:
-                modulos_data[0]['materiais'] = materiais_video + modulos_data[0].get('materiais', [])
-        else:
-            # Cria um módulo virtual com os vídeos
-            modulos_data = [{
-                'id': 0,
-                'curso': curso.id,
-                'curso_titulo': curso.titulo,
-                'titulo': 'Aulas do Curso',
-                'descricao': '',
-                'ordem': 0,
-                'ativo': True,
-                'materiais': materiais_video,
-            }]
+        modulos_data = [{
+            'id': 0, 'curso': curso.id, 'curso_titulo': curso.titulo,
+            'titulo': 'Aulas do Curso', 'descricao': '',
+            'ordem': 0, 'ativo': True, 'materiais': materiais_video,
+        }]
     
     return Response({
         'curso': CursoSerializer(curso, context={'request': request}).data,
@@ -791,7 +893,10 @@ def gerar_pdf_certificado(certificado):
     name_style.fontSize = 22
     name_style.textColor = HexColor('#1a1a2e')
     name_style.alignment = TA_CENTER
-    content.append(Paragraph(certificado.aluno_nome, name_style))
+    # Get student name from matricula
+    aluno = certificado.matricula.usuario
+    aluno_nome = aluno.get_full_name() or aluno.username
+    content.append(Paragraph(aluno_nome, name_style))
     
     content.append(Spacer(1, 1*cm))
     content.append(Paragraph('concluiu com êxito o curso', subtitle_style))
@@ -846,3 +951,96 @@ def download_certificado(request, pk):
     filename = f'certificado_{certificado.codigo}.pdf'
     response['Content-Disposition'] = f'inline; filename="{filename}"'
     return response
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def user_stats(request):
+    user = request.user
+    now = timezone.now()
+
+    total_minutos = Matricula.objects.filter(usuario=user).aggregate(
+        total=models.Sum('ultimo_segundo_assistido')
+    )['total'] or 0
+    horas_estudo = round(total_minutos / 3600, 1) if total_minutos else 0
+
+    total_certificados = Certificado.objects.filter(matricula__usuario=user).count()
+
+    today = now.date()
+    inicio_semana = today - timedelta(days=today.weekday())
+    fim_semana = inicio_semana + timedelta(days=6)
+    meta = MetaSemanal.objects.filter(
+        usuario=user,
+        semana_inicio=inicio_semana,
+        semana_fim=fim_semana,
+    ).first()
+
+    meta_data = None
+    if meta:
+        meta_data = {
+            'titulo': meta.titulo,
+            'meta_horas': meta.meta_horas,
+            'horas_concluidas': meta.horas_concluidas,
+            'percentual': meta.percentual,
+        }
+
+    return Response({
+        'horas_estudo': horas_estudo,
+        'total_certificados': total_certificados,
+        'meta_semanal': meta_data,
+    })
+
+
+# Avaliações de módulos
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def modulo_avaliacoes(request, pk):
+    """Retorna avaliações de um módulo específico"""
+    try:
+        modulo = Modulo.objects.select_related('curso').get(pk=pk)
+    except Modulo.DoesNotExist:
+        return Response(
+            {'detail': 'Módulo não encontrado.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    if not user_can_access_curso(modulo.curso, request.user):
+        return Response(
+            {'detail': 'Você não tem permissão para acessar este módulo.'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    avaliacoes = Avaliacao.objects.filter(modulo=pk).order_by('-created_at').select_related('usuario')
+    serializer = AvaliacaoSerializer(avaliacoes, many=True, context={'request': request})
+    return Response({'results': serializer.data})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def modulo_avaliar(request, pk):
+    """Cria uma avaliação para um módulo específico"""
+    try:
+        modulo = Modulo.objects.select_related('curso').get(pk=pk)
+    except Modulo.DoesNotExist:
+        return Response(
+            {'detail': 'Módulo não encontrado.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    if not user_can_access_curso(modulo.curso, request.user):
+        return Response(
+            {'detail': 'Você não tem permissão para acessar este módulo.'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    serializer = AvaliacaoSerializer(data={
+        'modulo': pk,
+        'nota': request.data.get('nota'),
+        'comentario': request.data.get('comentario', ''),
+    }, context={'request': request})
+    
+    if serializer.is_valid():
+        serializer.save(usuario=request.user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

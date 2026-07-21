@@ -450,6 +450,7 @@ input:focus, textarea:focus, select:focus {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   overflow: hidden;
+  max-width: 900px;
 }
 
 .inline-group h2 {
@@ -589,7 +590,7 @@ input:focus, textarea:focus, select:focus {
   border-color: var(--accent-blue);
 }
 
-.admin-nav-item.active a {
+.admin-nav-item.active > a {
   background: linear-gradient(135deg, var(--accent-blue), var(--accent-blue-hover));
   color: #fff;
   font-weight: 600;
@@ -635,6 +636,101 @@ input:focus, textarea:focus, select:focus {
 @keyframes cursor-blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
+}
+
+/* ── Submenu Lateral ── */
+.admin-nav-item.has-submenu {
+  position: relative;
+}
+
+.admin-nav-item.has-submenu > a {
+  cursor: pointer;
+}
+
+.submenu-arrow {
+  font-size: 10px !important;
+  width: auto !important;
+  transition: transform 0.3s ease;
+}
+
+.admin-nav-item.has-submenu.open .submenu-arrow {
+  transform: rotate(-90deg);
+}
+
+.admin-submenu {
+  position: fixed;
+  list-style: none;
+  padding: 10px;
+  margin: 0;
+  min-width: 180px;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(-50%) translateX(-8px);
+  transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
+  z-index: 200;
+}
+
+.admin-nav-item.has-submenu.open .admin-submenu {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(-50%) translateX(0);
+}
+
+.admin-submenu li a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 400;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.admin-submenu li a::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.admin-submenu li a:hover {
+  background: rgba(26, 61, 110, 0.25);
+  border-color: var(--accent-blue);
+  color: var(--text-primary);
+}
+
+.admin-submenu li a:hover::before {
+  background: var(--accent-blue);
+}
+
+.admin-submenu li.active a {
+  background: rgba(26, 61, 110, 0.35);
+  color: #fff;
+  font-weight: 600;
+  border-color: var(--accent-blue);
+}
+
+.admin-submenu li.active a::before {
+  background: var(--accent-blue);
 }
 
 /* Divider */
@@ -890,21 +986,34 @@ body:not(.popup) #header {
 }
 
 .inline-group table {
-  table-layout: fixed;
+  table-layout: auto;
   width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 .inline-group table th,
 .inline-group table td {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 0;
+  padding: 10px 12px;
+  vertical-align: middle;
 }
 
 .inline-group table th {
   white-space: normal;
   word-wrap: break-word;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.inline-group table td input[type="text"],
+.inline-group table td input[type="url"],
+.inline-group table td input[type="number"],
+.inline-group table td select,
+.inline-group table td textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  font-size: 13px;
 }
 
 .inline-group .row-form-text {

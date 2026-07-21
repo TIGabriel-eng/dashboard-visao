@@ -450,6 +450,7 @@ input:focus, textarea:focus, select:focus {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   overflow: hidden;
+  max-width: 900px;
 }
 
 .inline-group h2 {
@@ -890,21 +891,34 @@ body:not(.popup) #header {
 }
 
 .inline-group table {
-  table-layout: fixed;
+  table-layout: auto;
   width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 .inline-group table th,
 .inline-group table td {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 0;
+  padding: 10px 12px;
+  vertical-align: middle;
 }
 
 .inline-group table th {
   white-space: normal;
   word-wrap: break-word;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.inline-group table td input[type="text"],
+.inline-group table td input[type="url"],
+.inline-group table td input[type="number"],
+.inline-group table td select,
+.inline-group table td textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  font-size: 13px;
 }
 
 .inline-group .row-form-text {
