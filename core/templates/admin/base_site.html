@@ -1,34 +1,5 @@
 {% extends "admin/base.html" %}
-{% load static %}
-
-{% block title %}{{ title }}{% endblock %}
-
-{% block extrahead %}
-<style>
-  .btn-return-panel {
-    display: inline-block;
-    padding: 8px 12px;
-    background: #f4f4f4;
-    color: #333;
-    border: 1px solid #ccc;
-    text-decoration: none;
-    border-radius: 4px;
-    font-size: 13px;
-  }
-  .btn-return-panel:hover {
-    background: #e2e2e2;
-  }
-  .site-name { margin-left: 8px; }
-  .return-panel-box { margin: 12px 0; }
-</style>
-{% endblock %}
-
-{% block nav-global %}
-  <div class="return-panel-box">
-    <a class="btn-return-panel" href="{% url 'admin:index' %}">Voltar ao Painel do Django</a>
-  </div>
-{% endblock %}
-
-{% block content_title %}
-  <h1>{{ title }}</h1>
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+{% block branding %}
+{{ block.super }}
 {% endblock %}

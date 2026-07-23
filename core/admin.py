@@ -2,14 +2,15 @@ from django.contrib import admin, messages
 from django.contrib.auth.models import User, Group, Permission
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin, GroupAdmin
 from django.contrib.contenttypes.models import ContentType
-from django.shortcuts import redirect, get_object_or_404
+from django.shortcuts import redirect, get_object_or_404, render
+from django.http import HttpResponseRedirect
 from django.utils.html import format_html
 from django.urls import path, reverse
 from django.db.models import Count, Q
 from django.contrib.auth import get_user_model
 from django import forms
-from .models import Curso, Video, Modulo, Material, Trilha, Evento, Live, Novidade, LogAtividade, Cliente, CursoVisualizacao, Matricula, Plano, Ambiente, Perfil, Permissao, FormacaoAcademica, Habilidade, AssinaturaPlano, MetaSemanal, RegraAtribuicaoPlano, AcessoRoleAcademia
-from .forms import CursoAdminForm
+from .models import Curso, Video, Modulo, Material, Trilha, Evento, Live, Novidade, LogAtividade, Cliente, MembroOrcoma, CursoVisualizacao, Matricula, Plano, Ambiente, Perfil, Permissao, FormacaoAcademica, Habilidade, AssinaturaPlano, MetaSemanal, RegraAtribuicaoPlano, AcessoRoleAcademia
+from .forms import CursoAdminForm, MembroOrcomaAddForm, ClienteAddForm, EMPRESA_PADRAO
 
 User = get_user_model()
 
@@ -364,7 +365,7 @@ class PerfilInline(admin.StackedInline):
     filter_horizontal = ('planos',)
     fieldsets = (
         ('Informações Corporativas', {
-            'fields': ('empresa', 'cnpj', 'telefone'),
+            'fields': ('empresa', 'unidade', 'cargo', 'cnpj', 'telefone'),
             'description': 'Preencha as informações corporativas do usuário.',
         }),
         ('Informações Adicionais', {
@@ -375,6 +376,7 @@ class PerfilInline(admin.StackedInline):
 
 @admin.register(Cliente)
 class ClienteAdmin(BaseUserAdmin):
+    change_list_template = 'admin/core/cliente/change_list.html'
     inlines = [PerfilInline]
     list_display = ('username', 'get_full_name', 'email', 'role_info', 'is_active', 'date_joined')
     list_filter = ('is_active', 'date_joined')
@@ -423,6 +425,260 @@ class ClienteAdmin(BaseUserAdmin):
                             perfil.planos.add(plano)
                         except Plano.DoesNotExist:
                             pass
+
+    def response_add(self, request, obj, post_url_continue=None):
+        return HttpResponseRedirect(reverse('admin:core_membroorcoma_changelist'))
+
+    def response_change(self, request, obj):
+        return HttpResponseRedirect(reverse('admin:core_membroorcoma_changelist'))
+
+    def response_delete(self, request, obj_display, obj_id):
+        return HttpResponseRedirect(reverse('admin:core_membroorcoma_changelist'))
+
+    def changelist_view(self, request, extra_context=None):
+        return HttpResponseRedirect(reverse('admin:core_membroorcoma_changelist'))
+
+
+STAFF_ROLES = ('admin', 'colaborador_orcoma', 'gestor_orcoma')
+CLIENT_ROLES = ('cliente_premium', 'cliente_orcoma', 'empresario', 'cliente_equipe', 'visitor')
+
+
+@admin.register(MembroOrcoma)
+class MembroOrcomaAdmin(BaseUserAdmin):
+    change_list_template = 'admin/core/membro_orcoma/change_list.html'
+    add_form_template = 'admin/core/membro_orcoma/add_form.html'
+    add_form = MembroOrcomaAddForm
+    inlines = [PerfilInline]
+    list_display = ('username', 'get_full_name', 'email', 'role_info', 'is_active', 'date_joined')
+    list_filter = ('is_active', 'date_joined')
+    search_fields = ('username', 'first_name', 'last_name', 'email')
+    ordering = ('-date_joined',)
+
+    fieldsets = (
+        (None, {'fields': ('username', 'password')}),
+        ('Informações Pessoais', {'fields': ('first_name', 'last_name', 'email')}),
+        ('Datas', {'fields': ('last_login', 'date_joined')}),
+    )
+
+    add_fieldsets = (
+        ('Dados de Acesso', {
+            'classes': ('wide',),
+            'fields': ('username', 'password1', 'password2'),
+        }),
+        ('Informações Pessoais', {
+            'classes': ('wide',),
+            'fields': ('first_name', 'last_name', 'email'),
+        }),
+        ('Dados Corporativos', {
+            'classes': ('wide',),
+            'fields': ('empresa', 'unidade', 'cargo', 'telefone'),
+        }),
+    )
+
+    def get_full_name(self, obj):
+        return obj.get_full_name() or '-'
+    get_full_name.short_description = 'Nome completo'
+
+    def role_info(self, obj):
+        perfil = getattr(obj, 'perfil', None)
+        if perfil:
+            return perfil.get_role_display()
+        return '-'
+    role_info.short_description = 'Função'
+
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+
+        staff_users = User.objects.filter(
+            perfil__role__in=STAFF_ROLES,
+            is_active=True,
+        ).select_related('perfil').order_by('-date_joined')
+
+        client_users = User.objects.filter(
+            perfil__role__in=CLIENT_ROLES,
+            is_active=True,
+        ).select_related('perfil').order_by('-date_joined')
+
+        extra_context['staff_users'] = staff_users
+        extra_context['client_users'] = client_users
+        extra_context['stats'] = {
+            'total_staff': staff_users.count(),
+            'total_clients': client_users.count(),
+            'total': staff_users.count() + client_users.count(),
+        }
+
+        return super().changelist_view(request, extra_context=extra_context)
+
+    def save_formset(self, request, form, formset, change):
+        instances = formset.save(commit=False)
+        super().save_formset(request, form, formset, change)
+        if formset.model is Perfil:
+            for perfil in instances:
+                if perfil.pk and not perfil.planos.exists():
+                    default_plan_name = self.get_default_plan_for_role(perfil.role)
+                    if default_plan_name:
+                        try:
+                            plano = Plano.objects.get(nome__iexact=default_plan_name)
+                            perfil.planos.add(plano)
+                        except Plano.DoesNotExist:
+                            pass
+
+    def get_default_plan_for_role(self, role):
+        if role == 'admin':
+            return 'Plano Premium'
+        return None
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            user = User.objects.create_user(
+                username=form.cleaned_data['username'],
+                email=form.cleaned_data.get('email', ''),
+                password=form.cleaned_data['password1'],
+            )
+            user.first_name = form.cleaned_data.get('first_name', '')
+            user.last_name = form.cleaned_data.get('last_name', '')
+            user.save()
+            Perfil.objects.update_or_create(
+                usuario=user,
+                defaults={
+                    'empresa': form.cleaned_data.get('empresa', EMPRESA_PADRAO),
+                    'unidade': form.cleaned_data.get('unidade', ''),
+                    'role': 'admin',
+                    'cargo': form.cleaned_data.get('cargo', ''),
+                    'telefone': form.cleaned_data.get('telefone', ''),
+                },
+            )
+            default_plan_name = self.get_default_plan_for_role('admin')
+            if default_plan_name:
+                try:
+                    plano = Plano.objects.get(nome__iexact=default_plan_name)
+                    user.perfil.planos.add(plano)
+                except Plano.DoesNotExist:
+                    pass
+        else:
+            super().save_model(request, obj, form, change)
+
+    def get_inline_instances(self, request, obj=None):
+        if obj is None:
+            return []
+        return super().get_inline_instances(request, obj)
+
+    def get_urls(self):
+        custom_urls = [
+            path('add_cliente/',
+                 self.admin_site.admin_view(self.add_cliente_view),
+                 name='core_membroorcoma_add_cliente'),
+            path('<int:pk>/change_cliente/',
+                 self.admin_site.admin_view(self.change_cliente_view),
+                 name='core_membroorcoma_change_cliente'),
+            path('<int:pk>/delete_cliente/',
+                 self.admin_site.admin_view(self.delete_cliente_view),
+                 name='core_membroorcoma_delete_cliente'),
+        ]
+        return custom_urls + super().get_urls()
+
+    def add_cliente_view(self, request):
+        if request.method == 'POST':
+            form = ClienteAddForm(request.POST)
+            if form.is_valid():
+                user = form.save()
+                self.message_user(request, f'Cliente "{user.get_full_name() or user.username}" criado com sucesso.')
+                return HttpResponseRedirect(reverse('admin:core_membroorcoma_changelist'))
+        else:
+            form = ClienteAddForm()
+        from django.contrib.admin.helpers import AdminForm
+        admin_form = AdminForm(
+            form,
+            list(self.add_fieldsets),
+            {},
+            readonly_fields=[],
+        )
+        context = {
+            **self.admin_site.each_context(request),
+            'title': 'Adicionar Cliente',
+            'subtitle': None,
+            'adminform': admin_form,
+            'add': True,
+            'change': False,
+            'is_popup': False,
+            'opts': self.model._meta,
+            'save_as': False,
+            'show_save': True,
+            'show_save_and_continue': False,
+            'show_save_and_add_another': False,
+            'add_form_template': 'admin/core/cliente/add_form.html',
+        }
+        return render(request, 'admin/core/cliente/add_form.html', context)
+
+    def change_cliente_view(self, request, pk):
+        user_obj = get_object_or_404(User, pk=pk)
+        from django.contrib.auth.forms import UserChangeForm
+        from django.contrib.admin.helpers import AdminForm
+
+        if request.method == 'POST':
+            form = UserChangeForm(request.POST, instance=user_obj)
+            if form.is_valid():
+                form.save()
+                self.message_user(request, f'Cliente "{user_obj.get_full_name() or user_obj.username}" atualizado com sucesso.')
+                return HttpResponseRedirect(reverse('admin:core_membroorcoma_changelist'))
+        else:
+            form = UserChangeForm(instance=user_obj)
+
+        admin_form = AdminForm(
+            form,
+            list(self.fieldsets),
+            self.get_prepopulated_fields(request),
+            readonly_fields=self.get_readonly_fields(request, user_obj),
+            model=self.model,
+        )
+        inline_instances = self.get_inline_instances(request, user_obj)
+        inline_admin_formsets = []
+        for inline in inline_instances:
+            fieldset = inline.get_fieldsets(request, user_obj)
+            formset = inline.get_formset(request, user_obj)
+            inline_admin_formsets.append(
+                admin.helpers.InlineAdminForm(inline, formset, fieldset, request.user)
+            )
+        context = {
+            **self.admin_site.each_context(request),
+            'title': f'Editar Cliente: {user_obj.get_full_name() or user_obj.username}',
+            'subtitle': None,
+            'adminform': admin_form,
+            'object_id': pk,
+            'original': user_obj,
+            'is_popup': False,
+            'inline_admin_formsets': inline_admin_formsets,
+            'errors': admin.helpers.AdminErrorList(form, []),
+            'opts': self.model._meta,
+            'add': False,
+            'change': True,
+            'save_as': False,
+            'show_save': True,
+            'show_save_and_continue': False,
+            'show_save_and_add_another': False,
+            'has_view_permission': True,
+            'has_change_permission': True,
+            'has_add_permission': False,
+            'has_delete_permission': True,
+        }
+        return render(request, 'admin/core/cliente/change_form.html', context)
+
+    def delete_cliente_view(self, request, pk):
+        user_obj = get_object_or_404(User, pk=pk)
+        if request.method == 'POST':
+            user_obj.delete()
+            self.message_user(request, f'Cliente "{user_obj.get_full_name() or user_obj.username}" excluído com sucesso.')
+            return HttpResponseRedirect(reverse('admin:core_membroorcoma_changelist'))
+        context = {
+            **self.admin_site.each_context(request),
+            'title': f'Excluir Cliente: {user_obj.get_full_name() or user_obj.username}',
+            'object': user_obj,
+            'object_name': user_obj.get_full_name() or user_obj.username,
+            'is_popup': False,
+            'opts': self.model._meta,
+            'app_label': self.model._meta.app_label,
+        }
+        return render(request, 'admin/core/cliente/delete_confirm.html', context)
 
 
 class VideoInline(admin.TabularInline):
@@ -507,18 +763,8 @@ class TrilhaAdmin(admin.ModelAdmin):
     quantidade_cursos.short_description = 'Qtd. Cursos'
 
 
-class EventoForm(forms.ModelForm):
-    class Meta:
-        model = Evento
-        fields = '__all__'
-        widgets = {
-            'data': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-        }
-
-
 @admin.register(Evento)
 class EventoAdmin(admin.ModelAdmin):
-    form = EventoForm
     list_display = ('titulo', 'data', 'local')
     list_filter = ('data',)
     search_fields = ('titulo',)

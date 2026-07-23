@@ -127,9 +127,19 @@ class TrilhaListSerializer(serializers.ModelSerializer):
 
 
 class EventoSerializer(serializers.ModelSerializer):
+    imagem_url = serializers.SerializerMethodField()
+
     class Meta:
         model = Evento
         fields = '__all__'
+
+    def get_imagem_url(self, obj):
+        if obj.imagem:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.imagem.url)
+            return obj.imagem.url
+        return None
 
 
 class LiveSerializer(serializers.ModelSerializer):

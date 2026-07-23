@@ -1,0 +1,488 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static admin_urls %}
+
+{% block title %}{{ title }} | {{ site_title }}{% endblock %}
+
+{% block extrahead %}
+  {{ block.super }}
+  <style>
+    #add-form-container {
+      max-width: 780px;
+      margin: 20px auto;
+      background: var(--bg-card, #122a4a);
+      border: 1px solid var(--border-color, #1e3350);
+      border-radius: var(--radius-lg, 16px);
+      overflow: hidden;
+    }
+    #add-form-container .add-header {
+      background: linear-gradient(135deg, #1a3d6e 0%, #2563eb 100%);
+      color: #fff;
+      padding: 24px 32px;
+    }
+    #add-form-container .add-header h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 600;
+      font-family: var(--font-display, 'Sora', sans-serif);
+      color: #fff !important;
+    }
+    #add-form-container .add-header p {
+      margin: 4px 0 0;
+      font-size: 13px;
+      opacity: .85;
+      color: rgba(255,255,255,.85) !important;
+    }
+    #add-form-container .add-body {
+      padding: 28px 32px 32px;
+    }
+
+    .add-section {
+      margin-bottom: 24px;
+    }
+    .add-section__title {
+      font-size: 13px;
+      font-weight: 700;
+      font-family: var(--font-display, 'Sora', sans-serif);
+      color: var(--accent-orange, #ff9d00);
+      border-bottom: 2px solid var(--accent-blue, #1a3d6e);
+      padding-bottom: 6px;
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+
+    #add-form-container .add-body .add-row {
+      margin-bottom: 14px;
+      border-bottom: none !important;
+      padding: 0 !important;
+      overflow: visible;
+    }
+    #add-form-container .add-body .add-row > label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary, #8b9ab5);
+      margin-bottom: 5px;
+      font-family: var(--font-body, 'DM Sans', sans-serif);
+    }
+    #add-form-container .add-body .add-row > label .required {
+      color: var(--accent-red, #dc2626);
+    }
+
+    #add-form-container .add-body .add-row input[type="text"],
+    #add-form-container .add-body .add-row input[type="email"],
+    #add-form-container .add-body .add-row input[type="password"],
+    #add-form-container .add-body .add-row select {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid var(--border-color, #1e3350);
+      border-radius: var(--radius-sm, 6px);
+      font-size: 14px;
+      font-family: var(--font-body, 'DM Sans', sans-serif);
+      color: var(--text-primary, #ffffff);
+      background: var(--bg-surface-2, #102542);
+      box-sizing: border-box;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      min-height: 38px;
+    }
+    #add-form-container .add-body .add-row input[type="text"]:focus,
+    #add-form-container .add-body .add-row input[type="email"]:focus,
+    #add-form-container .add-body .add-row input[type="password"]:focus,
+    #add-form-container .add-body .add-row select:focus {
+      outline: none;
+      border-color: var(--accent-orange, #ff9d00);
+      box-shadow: 0 0 0 3px rgba(255, 157, 0, 0.15);
+    }
+    #add-form-container .add-body .add-row input[readonly] {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    #add-form-container .add-body .add-help {
+      font-size: 12px;
+      color: var(--text-muted, #4a5568);
+      margin-top: 4px;
+    }
+
+    #add-form-container .add-body .add-error {
+      list-style: none;
+      padding: 0;
+      margin: 4px 0 0;
+    }
+    #add-form-container .add-body .add-error li {
+      color: var(--accent-red, #dc2626);
+      font-size: 12px;
+    }
+    #add-form-container .add-body .add-nonfield {
+      background: rgba(220, 38, 38, 0.15);
+      border: 1px solid var(--accent-red, #dc2626);
+      border-radius: var(--radius-md, 10px);
+      color: #fca5a5;
+      padding: 10px 14px;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+
+    .pw-req {
+      background: rgba(26, 61, 110, 0.2);
+      border: 1px solid var(--accent-blue, #1a3d6e);
+      border-radius: var(--radius-sm, 6px);
+      padding: 12px 16px;
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--text-secondary, #8b9ab5);
+      line-height: 1.6;
+    }
+    .pw-req strong {
+      color: var(--text-primary, #fff);
+    }
+    .pw-req ul {
+      margin: 4px 0 0 16px;
+      padding: 0;
+    }
+
+    /* Radio buttons */
+    .radio-group {
+      display: flex;
+      gap: 16px;
+      margin-top: 4px;
+    }
+    .radio-group label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--text-primary, #ffffff);
+      padding: 8px 16px;
+      border: 1px solid var(--border-color, #1e3350);
+      border-radius: var(--radius-sm, 6px);
+      background: var(--bg-surface-2, #102542);
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .radio-group label:has(input:checked) {
+      border-color: var(--accent-orange, #ff9d00);
+      background: rgba(255, 157, 0, 0.1);
+    }
+    .radio-group input[type="radio"] {
+      accent-color: var(--accent-orange, #ff9d00);
+    }
+
+    /* Planos checkboxes */
+    .planos-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+      margin-top: 6px;
+    }
+    .plano-card {
+      position: relative;
+    }
+    .plano-card input[type="checkbox"] {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .plano-card label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 14px;
+      border: 1px solid var(--border-color, #1e3350);
+      border-radius: var(--radius-sm, 6px);
+      background: var(--bg-surface-2, #102542);
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      font-size: 13px;
+      color: var(--text-primary, #ffffff);
+    }
+    .plano-card input[type="checkbox"]:checked + label {
+      border-color: var(--accent-orange, #ff9d00);
+      background: rgba(255, 157, 0, 0.1);
+    }
+    .plano-card label .plano-check {
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--border-color, #1e3350);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.2s, background 0.2s;
+      flex-shrink: 0;
+    }
+    .plano-card input[type="checkbox"]:checked + label .plano-check {
+      border-color: var(--accent-orange, #ff9d00);
+      background: var(--accent-orange, #ff9d00);
+    }
+    .plano-card label .plano-check::after {
+      content: '\2713';
+      color: #fff;
+      font-size: 12px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .plano-card input[type="checkbox"]:checked + label .plano-check::after {
+      opacity: 1;
+    }
+
+    /* Corporate fields toggle */
+    #corporate-fields {
+      transition: opacity 0.3s;
+    }
+    #corporate-fields.hidden {
+      opacity: 0.3;
+      pointer-events: none;
+    }
+
+    #add-form-container .add-body .add-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-color, #1e3350);
+      margin-top: 8px;
+    }
+    #add-form-container .add-body .add-actions .btn-save {
+      background: linear-gradient(135deg, #16a34a, #15803d);
+      color: #fff;
+      padding: 10px 28px;
+      border-radius: var(--radius-md, 10px);
+      font-size: 14px;
+      font-weight: 600;
+      font-family: var(--font-body, 'DM Sans', sans-serif);
+      cursor: pointer;
+      border: none;
+      transition: background 0.2s, transform 0.1s;
+      box-shadow: 0 2px 8px rgba(22, 163, 74, 0.3);
+    }
+    #add-form-container .add-body .add-actions .btn-save:hover {
+      background: linear-gradient(135deg, #15803d, #166534);
+      transform: translateY(-1px);
+    }
+    #add-form-container .add-body .add-actions .btn-cancel {
+      background: var(--bg-surface-2, #102542);
+      color: var(--text-secondary, #8b9ab5);
+      border: 1px solid var(--border-color, #1e3350) !important;
+      padding: 10px 20px;
+      border-radius: var(--radius-md, 10px);
+      font-size: 14px;
+      font-weight: 600;
+      font-family: var(--font-body, 'DM Sans', sans-serif);
+      text-decoration: none !important;
+      display: inline-flex;
+      align-items: center;
+      transition: background 0.2s;
+    }
+    #add-form-container .add-body .add-actions .btn-cancel:hover {
+      background: var(--bg-primary, #0a1628);
+    }
+
+    #add-form-container .add-body .add-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #60a5fa;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 16px;
+      text-decoration: none !important;
+      padding: 6px 14px;
+      background: rgba(59, 130, 246, 0.12);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      border-radius: 8px;
+      transition: background 0.2s;
+    }
+    #add-form-container .add-body .add-back:hover {
+      background: rgba(59, 130, 246, 0.22);
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div id="add-form-container">
+    <div class="add-header">
+      <h1>Adicionar Cliente</h1>
+      <p>Preencha os dados abaixo para criar uma nova conta de cliente.</p>
+    </div>
+    <div class="add-body">
+      <a href="{% url 'admin:core_membroorcoma_changelist' %}" class="add-back">
+        <i class="fa-solid fa-arrow-left"></i> Voltar a lista
+      </a>
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+
+        {% if adminform.form.non_field_errors %}
+          <div class="add-nonfield">
+            {% for error in adminform.form.non_field_errors %}{{ error }}{% endfor %}
+          </div>
+        {% endif %}
+
+        <div class="add-section">
+          <div class="add-section__title">Dados de Acesso</div>
+
+          <div class="add-row">
+            <label for="id_username">{{ adminform.form.username.label }}</label>
+            {{ adminform.form.username }}
+            {% if adminform.form.username.errors %}
+              <ul class="add-error">{% for e in adminform.form.username.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+            {% endif %}
+            {% if adminform.form.username.help_text %}
+              <div class="add-help">{{ adminform.form.username.help_text }}</div>
+            {% endif %}
+          </div>
+
+          <div class="add-row">
+            <label for="id_first_name">{{ adminform.form.first_name.label }}</label>
+            {{ adminform.form.first_name }}
+            {% if adminform.form.first_name.errors %}
+              <ul class="add-error">{% for e in adminform.form.first_name.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+            {% endif %}
+          </div>
+
+          <div class="add-row">
+            <label for="id_last_name">{{ adminform.form.last_name.label }}</label>
+            {{ adminform.form.last_name }}
+            {% if adminform.form.last_name.errors %}
+              <ul class="add-error">{% for e in adminform.form.last_name.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+            {% endif %}
+          </div>
+
+          <div class="add-row">
+            <label for="id_email">{{ adminform.form.email.label }}</label>
+            {{ adminform.form.email }}
+            {% if adminform.form.email.errors %}
+              <ul class="add-error">{% for e in adminform.form.email.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+            {% endif %}
+          </div>
+
+          <div class="add-row">
+            <label for="id_password1">{{ adminform.form.password1.label }}</label>
+            {{ adminform.form.password1 }}
+            {% if adminform.form.password1.errors %}
+              <ul class="add-error">{% for e in adminform.form.password1.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+            {% endif %}
+            <div class="pw-req">
+              <strong>Sua senha deve conter:</strong>
+              <ul>
+                <li>Pelo menos 8 caracteres</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="add-row">
+            <label for="id_password2">{{ adminform.form.password2.label }}</label>
+            {{ adminform.form.password2 }}
+            {% if adminform.form.password2.errors %}
+              <ul class="add-error">{% for e in adminform.form.password2.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="add-section">
+          <div class="add-section__title">Informações Corporativas</div>
+
+          <div class="add-row">
+            <label>{{ adminform.form.is_empresario.label }}</label>
+            <div class="radio-group">
+              {% for radio in adminform.form.is_empresario %}
+                <label>{{ radio }} {{ radio.choice_label }}</label>
+              {% endfor %}
+            </div>
+            {% if adminform.form.is_empresario.errors %}
+              <ul class="add-error">{% for e in adminform.form.is_empresario.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+            {% endif %}
+          </div>
+
+          <div id="corporate-fields">
+            <div class="add-row">
+              <label for="id_empresa">{{ adminform.form.empresa.label }}</label>
+              {{ adminform.form.empresa }}
+              {% if adminform.form.empresa.errors %}
+                <ul class="add-error">{% for e in adminform.form.empresa.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+              {% endif %}
+            </div>
+
+            <div class="add-row">
+              <label for="id_cnpj">{{ adminform.form.cnpj.label }}</label>
+              {{ adminform.form.cnpj }}
+              {% if adminform.form.cnpj.errors %}
+                <ul class="add-error">{% for e in adminform.form.cnpj.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+              {% endif %}
+            </div>
+
+            <div class="add-row">
+              <label for="id_regime_federal">{{ adminform.form.regime_federal.label }}</label>
+              {{ adminform.form.regime_federal }}
+              {% if adminform.form.regime_federal.errors %}
+                <ul class="add-error">{% for e in adminform.form.regime_federal.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+              {% endif %}
+            </div>
+
+            <div class="add-row">
+              <label for="id_telefone">{{ adminform.form.telefone.label }}</label>
+              {{ adminform.form.telefone }}
+              {% if adminform.form.telefone.errors %}
+                <ul class="add-error">{% for e in adminform.form.telefone.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="add-section">
+          <div class="add-section__title">Perfil e Planos</div>
+
+          <div class="add-row">
+            <label for="id_role">{{ adminform.form.role.label }} <span class="required">*</span></label>
+            {{ adminform.form.role }}
+            {% if adminform.form.role.errors %}
+              <ul class="add-error">{% for e in adminform.form.role.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+            {% endif %}
+          </div>
+
+          <div class="add-row">
+            <label>{{ adminform.form.planos.label }}</label>
+            <div class="planos-grid">
+              {% for checkbox in adminform.form.planos %}
+                <div class="plano-card">
+                  {{ checkbox.tag }}
+                  <label for="{{ checkbox.id_for_label }}">
+                    <span class="plano-check"></span>
+                    {{ checkbox.choice_label }}
+                  </label>
+                </div>
+              {% endfor %}
+            </div>
+            {% if adminform.form.planos.errors %}
+              <ul class="add-error">{% for e in adminform.form.planos.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="add-actions">
+          <a href="{% url 'admin:core_membroorcoma_changelist' %}" class="btn-cancel">Cancelar</a>
+          <input type="submit" value="Salvar Cliente" class="btn-save">
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      var radios = document.querySelectorAll('input[name="is_empresario"]');
+      var corpFields = document.getElementById('corporate-fields');
+      function toggleCorporate() {
+        var selected = document.querySelector('input[name="is_empresario"]:checked');
+        if (selected && selected.value === 'False') {
+          corpFields.classList.add('hidden');
+        } else {
+          corpFields.classList.remove('hidden');
+        }
+      }
+      radios.forEach(function(r) { r.addEventListener('change', toggleCorporate); });
+      toggleCorporate();
+    })();
+  </script>
+{% endblock %}

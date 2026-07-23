@@ -30,6 +30,7 @@
 
 <div class="admin-wrapper">
 
+  {% if user.is_authenticated %}
   <aside class="admin-sidebar" id="adminSidebar">
     <div class="admin-sidebar__logo">
       <a href="{% url 'admin:index' %}">
@@ -89,11 +90,19 @@
           </a>
         </li>
 
-        <!-- Usuários -->
+        <!-- Membros -->
+        <li class="admin-nav-item{% if '/admin/core/membro-orcoma/' in request.path %} active{% endif %}">
+          <a href="{% url 'admin:core_membroorcoma_changelist' %}" class="typing-nav">
+            <i class="fa-solid fa-user-shield"></i>
+            <span class="nav-text">Membros</span>
+          </a>
+        </li>
+
+        <!-- Clientes -->
         <li class="admin-nav-item{% if '/admin/core/cliente/' in request.path %} active{% endif %}">
           <a href="{% url 'admin:core_cliente_changelist' %}" class="typing-nav">
             <i class="fa-solid fa-users"></i>
-            <span class="nav-text">Usuários</span>
+            <span class="nav-text">Clientes</span>
           </a>
         </li>
 
@@ -134,16 +143,18 @@
     <div class="admin-sidebar__divider"></div>
 
     <div class="admin-sidebar__back">
-      <a href="/frontend/Login/Index.html" class="admin-sidebar__back-link">
+      <a href="{% url 'admin:logout' %}" class="admin-sidebar__back-link">
         <i class="fa-solid fa-arrow-left"></i>
-        <span>Voltar ao Portal</span>
+        <span>Sair</span>
       </a>
     </div>
   </aside>
+  {% endif %}
 
   <div class="admin-main" id="adminMain">
 
     {% block branding %}
+    {% if user.is_authenticated %}
     <header class="admin-topbar">
       <div class="admin-topbar__left">
         <button class="admin-topbar__toggle" id="adminMenuToggle" aria-label="Abrir menu">
@@ -158,11 +169,12 @@
           <i class="fa-regular fa-circle-user"></i>
           {% firstof user.get_short_name user.get_username %}
         </span>
-        <a href="/frontend/Login/Index.html" class="admin-topbar__logout" title="Sair">
+        <a href="{% url 'admin:logout' %}" class="admin-topbar__logout" title="Sair">
           <i class="fa-solid fa-right-from-bracket"></i>
         </a>
       </div>
     </header>
+    {% endif %}
     {% endblock %}
 
     {% block breadcrumbs %}{% endblock %}
@@ -290,7 +302,7 @@
       submenu.addEventListener('mouseenter', function() {
         if (closeTimer) {
           clearTimeout(closeTimer);
-          closeTimer = null;
+          clearTimeout = null;
         }
       });
 

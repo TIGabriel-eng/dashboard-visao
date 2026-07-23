@@ -17,6 +17,16 @@ class Cliente(User):
         return f'{self.get_full_name() or self.username}'
 
 
+class MembroOrcoma(User):
+    class Meta:
+        proxy = True
+        verbose_name = 'Membro Orcoma'
+        verbose_name_plural = 'Membros Orcoma'
+
+    def __str__(self):
+        return f'{self.get_full_name() or self.username}'
+
+
 class Permissao(Group):
     class Meta:
         proxy = True
@@ -460,12 +470,41 @@ class Perfil(models.Model):
         ('visitor', 'Visitante'),
     ]
 
+    REGIME_FEDERAL_CHOICES = [
+        ('', '---------'),
+        ('mei', 'MEI'),
+        ('me', 'ME'),
+        ('epp', 'EPP'),
+    ]
+
+    UNIDADE_CHOICES = [
+        ('', '---------'),
+        ('maracas', 'Maracás'),
+        ('salvador', 'Salvador'),
+        ('aguacara', 'Jaguaquara'),
+        ('jequie_1', 'Jiquié 1'),
+        ('jequie_2', 'Jequié 2'),
+        ('seabra', 'Seabra'),
+        ('itaberaba_publica', 'Itaberaba (Orcoma Pública)'),
+        ('itaberaba', 'Itaberaba'),
+        ('feira_de_santana', 'Feira de Santana'),
+        ('jiquirica', 'Jiquiriça'),
+        ('ruy_barbosa', 'Ruy Barbosa'),
+        ('sao_paulo', 'São Paulo'),
+        ('utinga', 'Utinga'),
+        ('varzea_nova', 'Várzea Nova'),
+    ]
+
     usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='perfil')
     role = models.CharField(max_length=30, choices=ROLE_CHOICES, default='cliente_orcoma', db_index=True)
     planos = models.ManyToManyField(Plano, blank=True, related_name='perfis')
     empresa = models.CharField(max_length=200, blank=True, verbose_name='Empresa')
+    unidade = models.CharField(max_length=30, choices=UNIDADE_CHOICES, blank=True, verbose_name='Unidade')
+    is_empresario = models.BooleanField(default=False, verbose_name='É Empresário?')
     cnpj = models.CharField(max_length=18, blank=True, verbose_name='CNPJ da Empresa')
+    regime_federal = models.CharField(max_length=10, choices=REGIME_FEDERAL_CHOICES, blank=True, verbose_name='Regime Federal')
     telefone = models.CharField(max_length=20, blank=True, verbose_name='Telefone Corporativo')
+    cargo = models.CharField(max_length=200, blank=True, verbose_name='Cargo')
     bio = models.TextField(blank=True)
     avatar = models.ImageField(upload_to='avatars/', blank=True, null=True, verbose_name='Avatar')
     created_at = models.DateTimeField(auto_now_add=True)

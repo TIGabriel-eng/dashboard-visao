@@ -1,0 +1,512 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block title %}Gestão de Usuários{% endblock %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <style>
+    .back-button-row { margin-bottom: 12px; }
+
+    .stats-bar {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .stat-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 22px;
+      background: linear-gradient(145deg, var(--bg-card), var(--bg-surface));
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 4px 16px rgba(0,0,0,.25);
+      min-width: 160px;
+    }
+    .stat-badge__icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: #fff;
+      flex-shrink: 0;
+    }
+    .stat-badge__icon--staff { background: linear-gradient(135deg, #6366f1, #4f46e5); }
+    .stat-badge__icon--client { background: linear-gradient(135deg, #10b981, #059669); }
+    .stat-badge__icon--total { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .stat-badge__info { display: flex; flex-direction: column; }
+    .stat-badge__value {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1;
+    }
+    .stat-badge__label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .hero-card {
+      background: linear-gradient(145deg, var(--bg-card), var(--bg-surface));
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      margin-bottom: 28px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.2);
+    }
+    .hero-card__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .hero-card__title-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .hero-card__icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: #fff;
+      flex-shrink: 0;
+    }
+    .hero-card__icon--staff { background: linear-gradient(135deg, #6366f1, #4f46e5); }
+    .hero-card__icon--client { background: linear-gradient(135deg, #10b981, #059669); }
+    .hero-card__title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 0;
+    }
+    .hero-card__subtitle {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin: 2px 0 0;
+    }
+    .hero-card__add-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-blue-hover));
+      color: #fff;
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 600;
+      border: none;
+      border-radius: var(--radius-md);
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 2px 8px rgba(26,61,110,.3);
+    }
+    .hero-card__add-btn:hover {
+      background: linear-gradient(135deg, var(--accent-blue-hover), #2a5a9e);
+      box-shadow: 0 4px 16px rgba(26,61,110,.5);
+      transform: translateY(-1px);
+      color: #fff;
+    }
+    .hero-card__add-btn i { font-size: 12px; }
+
+    .hero-card__body { padding: 0; overflow-x: auto; }
+
+    .hero-card__table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: auto;
+    }
+    .hero-card__table th {
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 12px 20px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+      white-space: nowrap;
+    }
+    .hero-card__table td {
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-primary);
+      font-size: 13px;
+      vertical-align: middle;
+    }
+    .hero-card__table tr:last-child td { border-bottom: none; }
+    .hero-card__table tr:hover td { background: rgba(255,255,255,.03); }
+
+    .hero-card__table th.hero-card__th-actions,
+    .hero-card__table td.hero-card__td-actions {
+      text-align: center;
+      width: 80px;
+    }
+
+    .role-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .role-badge--admin { background: rgba(245,158,11,.15); color: #fbbf24; }
+    .role-badge--gestor { background: rgba(99,102,241,.15); color: #a5b4fc; }
+    .role-badge--colaborador { background: rgba(59,130,246,.15); color: #93c5fd; }
+    .role-badge--cliente_premium { background: rgba(245,158,11,.15); color: #fbbf24; }
+    .role-badge--cliente_orcoma { background: rgba(16,185,129,.15); color: #6ee7b7; }
+    .role-badge--empresario { background: rgba(139,92,246,.15); color: #c4b5fd; }
+    .role-badge--cliente_equipe { background: rgba(6,182,212,.15); color: #67e8f9; }
+    .role-badge--visitor { background: rgba(107,114,128,.15); color: #9ca3af; }
+
+    .status-dot {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+    }
+    .status-dot::before {
+      content: '';
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .status-dot--active::before { background: #10b981; }
+    .status-dot--inactive::before { background: #ef4444; }
+
+    .row-actions {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .row-actions.is-visible { display: inline-flex; }
+    .row-action-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      text-decoration: none;
+      transition: transform .15s;
+      font-size: 14px;
+    }
+    .row-action-btn:hover { transform: scale(1.1); }
+    .row-action-btn--edit { color: #60a5fa; }
+    .row-action-btn--delete { color: #ef4444; }
+
+    .hero-card__empty {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .hero-card__empty i {
+      font-size: 28px;
+      margin-bottom: 8px;
+      display: block;
+      opacity: 0.4;
+    }
+
+    .confirm-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.45);
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+    }
+    .confirm-modal {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 28px 32px;
+      max-width: 420px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+      font-family: var(--font-body);
+    }
+    .confirm-modal__title {
+      margin: 0 0 8px;
+      font-size: 18px;
+      color: var(--text-primary);
+    }
+    .confirm-modal__text {
+      margin: 0 0 24px;
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+    .confirm-modal__actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+    .confirm-modal__btn {
+      padding: 8px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .confirm-modal__btn:hover { opacity: .85; }
+    .confirm-modal__btn--yes { background: #ef4444; color: #fff; }
+    .confirm-modal__btn--no { background: var(--accent-blue); color: #fff; }
+  </style>
+{% endblock %}
+
+{% block content_title %}
+  <div class="back-button-row">
+    <a href="{% url 'admin:index' %}" class="back-link anim-slide-in">
+      <i class="fa-solid fa-arrow-left"></i> Voltar ao painel
+    </a>
+  </div>
+  <h1 class="admin-page-title">Gestão de Usuários</h1>
+{% endblock %}
+
+{% block content %}
+
+  <div class="stats-bar">
+    <div class="stat-badge">
+      <div class="stat-badge__icon stat-badge__icon--staff"><i class="fa-solid fa-user-shield"></i></div>
+      <div class="stat-badge__info">
+        <span class="stat-badge__value">{{ stats.total_staff }}</span>
+        <span class="stat-badge__label">Membros Orcoma</span>
+      </div>
+    </div>
+    <div class="stat-badge">
+      <div class="stat-badge__icon stat-badge__icon--client"><i class="fa-solid fa-users"></i></div>
+      <div class="stat-badge__info">
+        <span class="stat-badge__value">{{ stats.total_clients }}</span>
+        <span class="stat-badge__label">Clientes</span>
+      </div>
+    </div>
+    <div class="stat-badge">
+      <div class="stat-badge__icon stat-badge__icon--total"><i class="fa-solid fa-layer-group"></i></div>
+      <div class="stat-badge__info">
+        <span class="stat-badge__value">{{ stats.total }}</span>
+        <span class="stat-badge__label">Total</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CARD 1 — Membros Orcoma -->
+  <div class="hero-card">
+    <div class="hero-card__header">
+      <div class="hero-card__title-group">
+        <div class="hero-card__icon hero-card__icon--staff"><i class="fa-solid fa-user-shield"></i></div>
+        <div>
+          <h2 class="hero-card__title">Membros Orcoma</h2>
+          <p class="hero-card__subtitle">Administradores, gestores e colaboradores da plataforma</p>
+        </div>
+      </div>
+      <a href="{% url 'admin:core_membroorcoma_add' %}" class="hero-card__add-btn">
+        <i class="fa-solid fa-plus"></i> Adicionar Membro
+      </a>
+    </div>
+    <div class="hero-card__body">
+      {% if staff_users %}
+      <table class="hero-card__table">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Email</th>
+            <th>Cargo</th>
+            <th>Funcao</th>
+            <th>Status</th>
+            <th>Cadastro</th>
+            <th class="hero-card__th-actions">Acoes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in staff_users %}
+          <tr>
+            <td><a href="{% url 'admin:core_membroorcoma_change' u.pk %}" style="color: var(--text-primary); font-weight: 500;">{{ u.get_full_name|default:u.username }}</a></td>
+            <td>{{ u.email|default:"-" }}</td>
+            <td>{{ u.perfil.cargo|default:"-" }}</td>
+            <td>
+              {% if u.perfil %}
+                <span class="role-badge role-badge--{{ u.perfil.role }}">{{ u.perfil.get_role_display }}</span>
+              {% else %}
+                <span class="role-badge role-badge--visitor">Sem perfil</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="status-dot {% if u.is_active %}status-dot--active{% else %}status-dot--inactive{% endif %}">
+                {% if u.is_active %}Ativo{% else %}Inativo{% endif %}
+              </span>
+            </td>
+            <td>{{ u.date_joined|date:"d/m/Y" }}</td>
+            <td class="hero-card__td-actions">
+              <div class="row-actions" id="actions-staff-{{ u.pk }}">
+                <a href="{% url 'admin:core_membroorcoma_change' u.pk %}" class="row-action-btn row-action-btn--edit" title="Editar">
+                  <i class="fa-solid fa-pencil"></i>
+                </a>
+                <a href="javascript:void(0)" class="row-action-btn row-action-btn--delete" title="Excluir"
+                   data-delete-url="{% url 'admin:core_membroorcoma_delete' u.pk %}"
+                   data-name="{{ u.get_full_name|default:u.username }}">
+                  <i class="fa-solid fa-trash"></i>
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="hero-card__empty">
+        <i class="fa-solid fa-user-shield"></i>
+        Nenhum membro Orcoma cadastrado.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- CARD 2 — Clientes / Usuários -->
+  <div class="hero-card">
+    <div class="hero-card__header">
+      <div class="hero-card__title-group">
+        <div class="hero-card__icon hero-card__icon--client"><i class="fa-solid fa-users"></i></div>
+        <div>
+          <h2 class="hero-card__title">Usuários / Clientes</h2>
+          <p class="hero-card__subtitle">Clientes e usuários da plataforma</p>
+        </div>
+      </div>
+      <a href="{% url 'admin:core_membroorcoma_add_cliente' %}" class="hero-card__add-btn">
+        <i class="fa-solid fa-plus"></i> Adicionar Cliente
+      </a>
+    </div>
+    <div class="hero-card__body">
+      {% if client_users %}
+      <table class="hero-card__table">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Email</th>
+            <th>Função</th>
+            <th>Status</th>
+            <th>Cadastro</th>
+            <th class="hero-card__th-actions">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in client_users %}
+          <tr>
+            <td><a href="{% url 'admin:core_membroorcoma_change_cliente' u.pk %}" style="color: var(--text-primary); font-weight: 500;">{{ u.get_full_name|default:u.username }}</a></td>
+            <td>{{ u.email|default:"-" }}</td>
+            <td>
+              {% if u.perfil %}
+                <span class="role-badge role-badge--{{ u.perfil.role }}">{{ u.perfil.get_role_display }}</span>
+              {% else %}
+                <span class="role-badge role-badge--visitor">Sem perfil</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="status-dot {% if u.is_active %}status-dot--active{% else %}status-dot--inactive{% endif %}">
+                {% if u.is_active %}Ativo{% else %}Inativo{% endif %}
+              </span>
+            </td>
+            <td>{{ u.date_joined|date:"d/m/Y" }}</td>
+            <td class="hero-card__td-actions">
+              <div class="row-actions" id="actions-client-{{ u.pk }}">
+                <a href="{% url 'admin:core_membroorcoma_change_cliente' u.pk %}" class="row-action-btn row-action-btn--edit" title="Editar">
+                  <i class="fa-solid fa-pencil"></i>
+                </a>
+                <a href="javascript:void(0)" class="row-action-btn row-action-btn--delete" title="Excluir"
+                   data-delete-url="{% url 'admin:core_membroorcoma_delete_cliente' u.pk %}"
+                   data-name="{{ u.get_full_name|default:u.username }}">
+                  <i class="fa-solid fa-trash"></i>
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="hero-card__empty">
+        <i class="fa-solid fa-users"></i>
+        Nenhum cliente cadastrado.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Modal de confirmação de exclusão -->
+  <div class="confirm-overlay" id="confirmOverlay">
+    <div class="confirm-modal">
+      <h3 class="confirm-modal__title">Confirmar exclusão</h3>
+      <p class="confirm-modal__text">
+        Tem certeza que deseja excluir "<strong id="confirmName"></strong>"?
+        Essa ação não pode ser desfeita.
+      </p>
+      <div class="confirm-modal__actions">
+        <button class="confirm-modal__btn confirm-modal__btn--no" id="confirmNo">Não</button>
+        <button class="confirm-modal__btn confirm-modal__btn--yes" id="confirmYes">Sim</button>
+      </div>
+    </div>
+  </div>
+
+{% endblock %}
+
+{% block extrajs %}
+  <script>
+    (function() {
+      var overlay = document.getElementById('confirmOverlay');
+      var nameEl = document.getElementById('confirmName');
+      var deleteUrl = null;
+
+      function closeModal() { overlay.style.display = 'none'; }
+
+      document.getElementById('confirmNo').addEventListener('click', closeModal);
+      document.getElementById('confirmYes').addEventListener('click', function() {
+        if (deleteUrl) window.location.href = deleteUrl;
+      });
+      overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) closeModal();
+      });
+
+      document.querySelectorAll('.row-action-btn--delete').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          nameEl.textContent = this.dataset.name;
+          deleteUrl = this.dataset.deleteUrl;
+          overlay.style.display = 'flex';
+        });
+      });
+
+      document.querySelectorAll('tbody tr').forEach(function(row) {
+        row.addEventListener('mouseenter', function() {
+          var actions = this.querySelector('.row-actions');
+          if (actions) actions.classList.add('is-visible');
+        });
+        row.addEventListener('mouseleave', function() {
+          var actions = this.querySelector('.row-actions');
+          if (actions) actions.classList.remove('is-visible');
+        });
+      });
+    })();
+  </script>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "admin/change_list.html" %}
+{% load i18n static %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <style>
+    .admin-content { padding: 0 !important; }
+    #changelist-filter { display: none !important; }
+
+    .content { max-width: 100% !important; }
+    .changelist-form-container > div { max-width: 100% !important; }
+
+    #content-main,
+    #changelist-form,
+    .results,
+    #result_list {
+      width: 100% !important;
+      float: none !important;
+      margin: 0 !important;
+    }
+  </style>
+{% endblock %}
