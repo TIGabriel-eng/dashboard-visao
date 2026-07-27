@@ -5,7 +5,7 @@ logger = logging.getLogger(__name__)
 from .models import Curso, Trilha, Evento, Live, Novidade, LogAtividade, CursoVisualizacao, Matricula, FormacaoAcademica, Habilidade, AssinaturaPlano, Ambiente, Modulo, Material, Certificado, MetaSemanal, Video
 from core.services.acesso import filtrar_cursos_acessiveis, user_can_access_curso, get_academias_permitidas, get_user_role, get_academias_permitidas_para_role
 from .serializers import (
-    CursoSerializer, TrilhaSerializer, TrilhaListSerializer,
+    CursoSerializer, CursoListSerializer, TrilhaSerializer, TrilhaListSerializer,
     EventoSerializer, LiveSerializer, NovidadeSerializer, LogAtividadeSerializer,
     RegisterSerializer, MeSerializer, CustomTokenObtainPairSerializer,
     MatriculaSerializer, MatriculaCreateSerializer,
@@ -38,13 +38,90 @@ class IsStaffOrReadOnly(permissions.BasePermission):
         return request.user and request.user.is_authenticated and request.user.is_staff
 
 
+from rest_framework.pagination import PageNumberPagination
+
+
+class CursoPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
 class CursoViewSet(viewsets.ModelViewSet):
     serializer_class = CursoSerializer
     permission_classes = [IsStaffOrReadOnly]
+    pagination_class = None
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return CursoListSerializer
+        return CursoSerializer
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        user = self.request.user
+
+        # Calcula dados de permissão uma ÚNICA vez para toda a requisição
+        role = None
+        planos_ids = []
+        academias_ids = []
+        if user.is_authenticated:
+            from core.services.acesso import get_user_role, ROLES_ACESSO_TOTAL
+            role = get_user_role(user)
+            perfil = getattr(user, 'perfil', None)
+            if perfil:
+                planos_ids = list(perfil.planos.filter(ativo=True).values_list('id', flat=True))
+            if role in ROLES_ACESSO_TOTAL:
+                from core.models import Ambiente
+                qs = Ambiente.objects.filter(ativo=True)
+                if role == 'cliente_premium':
+                    qs = qs.exclude(nome__iexact='Academy Orcomakers')
+                academias_ids = list(qs.values_list('id', flat=True))
+            else:
+                from core.services.acesso import PERMISSOES_PAPEL
+                nomes = PERMISSOES_PAPEL.get(role, [])
+                if nomes:
+                    from core.models import Ambiente
+                    academias_ids = list(Ambiente.objects.filter(ativo=True, nome__in=nomes).values_list('id', flat=True))
+        else:
+            role = 'visitor'
+
+        context['user_role'] = role
+        context['user_planos_ids'] = planos_ids
+        context['user_academias_ids'] = academias_ids
+        return context
 
     def get_queryset(self):
-        qs = Curso.objects.select_related('ambiente').prefetch_related('videos', 'academias_extras')
+        from django.db.models import Prefetch, OuterRef, Subquery
         user = self.request.user
+
+        qs = Curso.objects.select_related('ambiente').prefetch_related('academias_extras')
+
+        # Prefetch eficiente: anota a matrícula do usuário atual em cada curso
+        if user.is_authenticated:
+            qs = qs.prefetch_related(
+                Prefetch(
+                    'matriculas',
+                    queryset=Matricula.objects.filter(usuario=user),
+                    to_attr='_matricula_usuario'
+                )
+            )
+            # Também prefetch do primeiro vídeo ativo para a listagem
+            primeiro_video_qs = Video.objects.filter(
+                curso=OuterRef('pk'), ativo=True
+            ).order_by('ordem')
+            qs = qs.annotate(
+                _primeiro_video_id=Subquery(primeiro_video_qs.values('id')[:1])
+            )
+        else:
+            # Visitante: anota None para matrícula
+            qs = qs.prefetch_related(
+                Prefetch(
+                    'matriculas',
+                    queryset=Matricula.objects.none(),
+                    to_attr='_matricula_usuario'
+                )
+            )
 
         if not (user.is_authenticated and user.is_staff):
             qs = qs.filter(status='publicado')
@@ -59,7 +136,7 @@ class CursoViewSet(viewsets.ModelViewSet):
 
         status_param = self.request.query_params.get('status')
         if status_param and user.is_authenticated and user.is_staff:
-            qs = Curso.objects.select_related('ambiente').prefetch_related('videos', 'academias_extras')
+            qs = Curso.objects.select_related('ambiente').prefetch_related('academias_extras')
             qs = qs.filter(status=status_param)
             if ambiente:
                 qs = qs.filter(

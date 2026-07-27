@@ -1,0 +1,5 @@
+username,email,first_name,last_name,role,empresa,cnpj,telefone,cargo,unidade,regime_federal,is_empresario
+joao.silva,joao@empresa.com,João,Silva,cliente_orcoma,Empresa ABC,12.345.678/0001-90,(11)98765-4321,Analista,sao_paulo,mei,True
+maria.souza,maria@empresa.com,Maria,Souza,empresario,Empresa XYZ,98.765.432/0001-10,(11)91234-5678,Diretora,salvador,me,True
+pedro.costa,pedro@empresa.com,Pedro,Costa,cliente_equipe,Empresa 123,11.222.333/0001-44,(11)99999-8888,Gerente,maracas,,False
+ana.oliveira,ana@empresa.com,Ana,Oliveira,colaborador_orcoma,Orcoma,00.000.000/0001-00,(71)3333-4444,Colaborador,,,,

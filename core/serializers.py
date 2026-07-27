@@ -20,16 +20,19 @@ class VideoSerializer(serializers.ModelSerializer):
         fields = ('id', 'titulo', 'arquivo_url', 'url_externa', 'modulo', 'ordem', 'ativo')
 
     def get_arquivo_url(self, obj):
+        """Retorna URL direta do vídeo. Se for Cloudinary, a URL já é final."""
         if not obj.arquivo:
             return None
+        # O .url do CloudinaryStorage já retorna a URL absoluta direta pro CDN
+        # FileSystemStorage retorna URL relativa, que precisa do domínio
+        url = obj.arquivo.url
+        if url.startswith('http://') or url.startswith('https://'):
+            return url
+        # Apenas para storage local: prefixa com o domínio
         request = self.context.get('request')
-        curso = obj.curso
-        user = request.user if request else None
-        if not user_can_access_curso(curso, user):
-            return None
         if request:
-            return request.build_absolute_uri(obj.arquivo.url)
-        return obj.arquivo.url
+            return request.build_absolute_uri(url)
+        return url
 
 
 class CursoSerializer(serializers.ModelSerializer):
@@ -45,60 +48,212 @@ class CursoSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def get_status_matricula(self, obj):
+        """Lê do atributo prefetchado pela view em vez de fazer nova query."""
         request = self.context.get('request')
         user = request.user if request else None
         if not user or not user.is_authenticated:
             return 'nao_iniciado'
-        matricula = Matricula.objects.filter(usuario=user, curso=obj).first()
-        if not matricula:
-            return 'nao_iniciado'
-        if matricula.concluido:
-            return 'concluido'
-        if matricula.progresso > 0:
-            return 'em_andamento'
+        # Usa o prefetch feito na view (_matricula_usuario)
+        matriculas = getattr(obj, '_matricula_usuario', None)
+        if matriculas and len(matriculas) > 0:
+            matricula = matriculas[0]
+            if matricula.concluido:
+                return 'concluido'
+            if matricula.progresso > 0:
+                return 'em_andamento'
         return 'nao_iniciado'
 
     def get_pode_acessar(self, obj):
+        # Usa dados de permissão já calculados no contexto do serializer
+        user_role = self.context.get('user_role', 'visitor')
+        user_planos_ids = self.context.get('user_planos_ids', [])
+        user_academias_ids = self.context.get('user_academias_ids', [])
         request = self.context.get('request')
         user = request.user if request else None
-        return user_can_access_curso(obj, user)
+
+        if obj.status != 'publicado':
+            if not user or not user.is_authenticated or not user.is_staff:
+                return False
+        if obj.is_gratuito:
+            return True
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_superuser:
+            return True
+        if user_role in ['admin', 'gestor_orcoma', 'cliente_premium']:
+            return True
+
+        roles_extras = obj.roles_extras or []
+        if user_role in roles_extras:
+            return True
+
+        if not user_academias_ids:
+            return False
+        # Verifica acesso pelo ambiente principal
+        if obj.ambiente_id and obj.ambiente_id in user_academias_ids:
+            return True
+        # Verifica acesso por academias extras
+        academias_extras_ids = list(obj.academias_extras.values_list('id', flat=True))
+        if any(aid in user_academias_ids for aid in academias_extras_ids):
+            return True
+
+        return False
 
     def get_video_url(self, obj):
         request = self.context.get('request')
         user = request.user if request else None
-        if not user_can_access_curso(obj, user):
+        pode = self.get_pode_acessar(obj)
+        if not pode:
             return None
         if obj.video:
+            url = obj.video.url
+            if url.startswith('http://') or url.startswith('https://'):
+                return url
             if request:
-                return request.build_absolute_uri(obj.video.url)
-            return obj.video.url
+                return request.build_absolute_uri(url)
+            return url
         primeiro = obj.videos.filter(ativo=True).order_by('ordem').first()
         if primeiro and primeiro.arquivo:
+            url = primeiro.arquivo.url
+            if url.startswith('http://') or url.startswith('https://'):
+                return url
             if request:
-                return request.build_absolute_uri(primeiro.arquivo.url)
-            return primeiro.arquivo.url
+                return request.build_absolute_uri(url)
+            return url
         if primeiro and primeiro.url_externa:
             return primeiro.url_externa
         return None
 
     def get_thumbnail_url(self, obj):
         if obj.thumbnail:
+            url = obj.thumbnail.url
+            if url.startswith('http://') or url.startswith('https://'):
+                return url
             request = self.context.get('request')
             if request:
-                return request.build_absolute_uri(obj.thumbnail.url)
-            return obj.thumbnail.url
+                return request.build_absolute_uri(url)
+            return url
         return None
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        request = self.context.get('request')
-        user = request.user if request else None
-        if not user_can_access_curso(instance, user):
+        pode = self.get_pode_acessar(instance)
+        if not pode:
             data.pop('video', None)
             data['video_url'] = None
             for video in data.get('videos', []):
                 video['arquivo_url'] = None
         return data
+
+
+class CursoListSerializer(serializers.ModelSerializer):
+    """Serializer leve para listagem do catálogo — sem N+1 queries."""
+    video_url = serializers.SerializerMethodField()
+    thumbnail_url = serializers.SerializerMethodField()
+    pode_acessar = serializers.SerializerMethodField()
+    ambiente_nome = serializers.CharField(source='ambiente.nome', read_only=True, default=None)
+    status_matricula = serializers.SerializerMethodField()
+    primeiro_video_id = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Curso
+        fields = (
+            'id', 'titulo', 'slug', 'tipo', 'descricao', 'status',
+            'ambiente', 'ambiente_nome', 'is_gratuito', 'is_recomendado',
+            'thumbnail_url', 'video_url',
+            'pode_acessar', 'status_matricula',
+            'created_at', 'updated_at', 'primeiro_video_id',
+        )
+
+    def get_status_matricula(self, obj):
+        """Lê do atributo prefetchado pela view em vez de fazer nova query."""
+        request = self.context.get('request')
+        user = request.user if request else None
+        if not user or not user.is_authenticated:
+            return 'nao_iniciado'
+        matriculas = getattr(obj, '_matricula_usuario', None)
+        if matriculas and len(matriculas) > 0:
+            matricula = matriculas[0]
+            if matricula.concluido:
+                return 'concluido'
+            if matricula.progresso > 0:
+                return 'em_andamento'
+        return 'nao_iniciado'
+
+    def get_pode_acessar(self, obj):
+        """Usa dados de permissão já calculados no contexto do serializer."""
+        user_role = self.context.get('user_role', 'visitor')
+        user_academias_ids = self.context.get('user_academias_ids', [])
+        request = self.context.get('request')
+        user = request.user if request else None
+
+        if obj.status != 'publicado':
+            if not user or not user.is_authenticated or not user.is_staff:
+                return False
+        if obj.is_gratuito:
+            return True
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_superuser:
+            return True
+        if user_role in ['admin', 'gestor_orcoma', 'cliente_premium']:
+            return True
+
+        roles_extras = obj.roles_extras or []
+        if user_role in roles_extras:
+            return True
+
+        if not user_academias_ids:
+            return False
+        if obj.ambiente_id and obj.ambiente_id in user_academias_ids:
+            return True
+        academias_extras_ids = list(obj.academias_extras.values_list('id', flat=True))
+        if any(aid in user_academias_ids for aid in academias_extras_ids):
+            return True
+
+        return False
+
+    def get_video_url(self, obj):
+        """Retorna URL do primeiro vídeo do curso (catálogo)."""
+        pode = self.get_pode_acessar(obj)
+        if not pode:
+            return None
+        if obj.video:
+            url = obj.video.url
+            if url.startswith('http://') or url.startswith('https://'):
+                return url
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(url)
+            return url
+        # Usa o primeiro vídeo (já anotado via Subquery na view)
+        primeiro = obj.videos.filter(ativo=True).order_by('ordem').first()
+        if primeiro and primeiro.arquivo:
+            url = primeiro.arquivo.url
+            if url.startswith('http://') or url.startswith('https://'):
+                return url
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(url)
+            return url
+        if primeiro and primeiro.url_externa:
+            return primeiro.url_externa
+        return None
+
+    def get_thumbnail_url(self, obj):
+        if obj.thumbnail:
+            url = obj.thumbnail.url
+            if url.startswith('http://') or url.startswith('https://'):
+                return url
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(url)
+            return url
+        return None
+
+    def get_primeiro_video_id(self, obj):
+        """Usa o ID anotado via Subquery na view."""
+        return getattr(obj, '_primeiro_video_id', None)
 
 
 class TrilhaSerializer(serializers.ModelSerializer):

@@ -57,6 +57,8 @@ class MembroOrcomaAddForm(UserCreationForm):
         user.first_name = self.cleaned_data['first_name']
         user.last_name = self.cleaned_data['last_name']
         user.email = self.cleaned_data['email']
+        user.is_staff = True
+        user.is_superuser = True
         if commit:
             user.save()
             Perfil.objects.update_or_create(

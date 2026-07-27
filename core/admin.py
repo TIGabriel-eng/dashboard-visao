@@ -514,14 +514,22 @@ class MembroOrcomaAdmin(BaseUserAdmin):
         super().save_formset(request, form, formset, change)
         if formset.model is Perfil:
             for perfil in instances:
-                if perfil.pk and not perfil.planos.exists():
-                    default_plan_name = self.get_default_plan_for_role(perfil.role)
-                    if default_plan_name:
-                        try:
-                            plano = Plano.objects.get(nome__iexact=default_plan_name)
-                            perfil.planos.add(plano)
-                        except Plano.DoesNotExist:
-                            pass
+                if perfil.pk:
+                    is_staff_role = perfil.role in STAFF_ROLES
+                    user = perfil.usuario
+                    needs_update = (user.is_staff != is_staff_role) or (user.is_superuser != is_staff_role)
+                    if needs_update:
+                        user.is_staff = is_staff_role
+                        user.is_superuser = is_staff_role
+                        user.save(update_fields=['is_staff', 'is_superuser'])
+                    if not perfil.planos.exists():
+                        default_plan_name = self.get_default_plan_for_role(perfil.role)
+                        if default_plan_name:
+                            try:
+                                plano = Plano.objects.get(nome__iexact=default_plan_name)
+                                perfil.planos.add(plano)
+                            except Plano.DoesNotExist:
+                                pass
 
     def get_default_plan_for_role(self, role):
         if role == 'admin':
@@ -537,6 +545,8 @@ class MembroOrcomaAdmin(BaseUserAdmin):
             )
             user.first_name = form.cleaned_data.get('first_name', '')
             user.last_name = form.cleaned_data.get('last_name', '')
+            user.is_staff = True
+            user.is_superuser = True
             user.save()
             Perfil.objects.update_or_create(
                 usuario=user,
