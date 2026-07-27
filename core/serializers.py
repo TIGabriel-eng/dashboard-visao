@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import (
-    Curso, Trilha, Evento, Live, Novidade, LogAtividade, Perfil, Matricula,
+    Curso, Trilha, Evento, Novidade, LogAtividade, Perfil, Matricula,
     FormacaoAcademica, Habilidade, AssinaturaPlano, Video, Modulo, Material,
     Certificado, MetaSemanal, Avaliacao,
 )
@@ -295,14 +295,6 @@ class EventoSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(obj.imagem.url)
             return obj.imagem.url
         return None
-
-
-class LiveSerializer(serializers.ModelSerializer):
-    ambiente_nome = serializers.CharField(source='ambiente.nome', read_only=True)
-
-    class Meta:
-        model = Live
-        fields = '__all__'
 
 
 class NovidadeSerializer(serializers.ModelSerializer):

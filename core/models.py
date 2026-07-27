@@ -324,46 +324,6 @@ class Evento(models.Model):
         return self.titulo
 
 
-class Live(models.Model):
-    STATUS_CHOICES = [
-        ('agendada', 'Agendada'),
-        ('ao_vivo', 'Ao Vivo'),
-        ('encerrada', 'Encerrada'),
-    ]
-
-    titulo = models.CharField(max_length=255)
-    descricao = models.TextField(blank=True)
-    imagem = models.ImageField(upload_to='lives/', blank=True, null=True, verbose_name='Imagem')
-    url_externa = models.URLField(
-        blank=True,
-        help_text='Link do YouTube Live ou Vimeo Live.',
-        verbose_name='URL externa',
-    )
-    data_hora = models.DateTimeField(verbose_name='Data e hora')
-    ambiente = models.ForeignKey(
-        'Ambiente',
-        on_delete=models.PROTECT,
-        related_name='lives',
-        null=True,
-        blank=True,
-        verbose_name='Academy',
-    )
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='agendada')
-    is_gratuito = models.BooleanField(default=False, verbose_name='Gratuito')
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        verbose_name = 'Live'
-        verbose_name_plural = 'Lives'
-        ordering = ['-data_hora']
-        permissions = [
-            ('gerenciar_lives', 'Pode gerenciar lives'),
-        ]
-
-    def __str__(self):
-        return self.titulo
-
-
 class CursoVisualizacao(models.Model):
     curso = models.ForeignKey(Curso, on_delete=models.CASCADE, related_name='visualizacoes')
     usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='visualizacoes')

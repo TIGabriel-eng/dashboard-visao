@@ -3,11 +3,11 @@ from rest_framework import viewsets, permissions, generics, status
 from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
-from .models import Curso, Trilha, Evento, Live, Novidade, LogAtividade, CursoVisualizacao, Matricula, FormacaoAcademica, Habilidade, AssinaturaPlano, Ambiente, Modulo, Material, Certificado, MetaSemanal, Video
+from .models import Curso, Trilha, Evento, Novidade, LogAtividade, CursoVisualizacao, Matricula, FormacaoAcademica, Habilidade, AssinaturaPlano, Ambiente, Modulo, Material, Certificado, MetaSemanal, Video
 from core.services.acesso import filtrar_cursos_acessiveis, user_can_access_curso, get_academias_permitidas, get_user_role, get_academias_permitidas_para_role
 from .serializers import (
     CursoSerializer, CursoListSerializer, TrilhaSerializer, TrilhaListSerializer,
-    EventoSerializer, LiveSerializer, NovidadeSerializer, LogAtividadeSerializer,
+    EventoSerializer, NovidadeSerializer, LogAtividadeSerializer,
     RegisterSerializer, MeSerializer, CustomTokenObtainPairSerializer,
     MatriculaSerializer, MatriculaCreateSerializer,
     FormacaoAcademicaSerializer, HabilidadeSerializer,
@@ -200,11 +200,6 @@ class TrilhaViewSet(viewsets.ReadOnlyModelViewSet):
 class EventoViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Evento.objects.all()
     serializer_class = EventoSerializer
-
-
-class LiveViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Live.objects.all()
-    serializer_class = LiveSerializer
 
 
 class MetaSemanalViewSet(viewsets.ModelViewSet):

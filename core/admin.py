@@ -9,7 +9,7 @@ from django.urls import path, reverse
 from django.db.models import Count, Q
 from django.contrib.auth import get_user_model
 from django import forms
-from .models import Curso, Video, Modulo, Material, Trilha, Evento, Live, Novidade, LogAtividade, Cliente, MembroOrcoma, CursoVisualizacao, Matricula, Plano, Ambiente, Perfil, Permissao, FormacaoAcademica, Habilidade, AssinaturaPlano, MetaSemanal, RegraAtribuicaoPlano, AcessoRoleAcademia
+from .models import Curso, Video, Modulo, Material, Trilha, Evento, Novidade, LogAtividade, Cliente, MembroOrcoma, CursoVisualizacao, Matricula, Plano, Ambiente, Perfil, Permissao, FormacaoAcademica, Habilidade, AssinaturaPlano, MetaSemanal, RegraAtribuicaoPlano, AcessoRoleAcademia
 from .forms import CursoAdminForm, MembroOrcomaAddForm, ClienteAddForm, ImportarUsuariosForm, EMPRESA_PADRAO
 from .services.importacao import processar_arquivo_excel, gerar_template_bytes, gerar_relatorio_bytes
 
@@ -857,15 +857,6 @@ class EventoAdmin(admin.ModelAdmin):
     search_fields = ('titulo',)
     date_hierarchy = 'data'
     fields = ('titulo', 'descricao', 'imagem', 'data', 'local', 'capacidade')
-
-
-@admin.register(Live)
-class LiveAdmin(admin.ModelAdmin):
-    list_display = ('titulo', 'data_hora', 'status', 'ambiente', 'is_gratuito')
-    list_filter = ('status', 'is_gratuito', 'ambiente')
-    search_fields = ('titulo',)
-    date_hierarchy = 'data_hora'
-    fields = ('titulo', 'descricao', 'imagem', 'url_externa', 'data_hora', 'ambiente', 'status', 'is_gratuito')
 
 
 @admin.register(Novidade)
