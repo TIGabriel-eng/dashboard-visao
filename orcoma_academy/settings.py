@@ -194,6 +194,7 @@ else:
     CORS_ALLOWED_ORIGINS = [
         'https://academy.orcoma.com.br',
         'https://orcoma-academy.vercel.app',
+        'https://orc-academy.vercel.app',
     ]
 CORS_ALLOW_CREDENTIALS = True
 

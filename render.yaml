@@ -18,18 +18,20 @@ services:
       - key: CLOUDINARY_API_SECRET
         sync: false
       - key: ALLOWED_HOSTS
-        value: "orcoma-academy-backend.onrender.com,orcoma-academy.vercel.app,academy.orcoma.com.br,localhost,127.0.0.1"
+        value: "orcoma-academy-backend.onrender.com,orc-academy.vercel.app,orcoma-academy.vercel.app,academy.orcoma.com.br,localhost,127.0.0.1"
       - key: PYTHON_VERSION
-        value: "3.12"
+        value: "3.12.0"
 
   - type: cron
     name: orcoma-keep-alive
     runtime: python
     buildCommand: pip install requests
-    schedule: "*/10 * * * *"
+    schedule: "*/5 * * * *"
     startCommand: python keep_alive.py
     envVars:
       - key: APP_URL
         value: "https://orcoma-academy-backend.onrender.com/api/ping/"
+      - key: PYTHON_VERSION
+        value: "3.12"
 
 
