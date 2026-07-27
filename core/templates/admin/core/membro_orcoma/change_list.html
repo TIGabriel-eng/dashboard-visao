@@ -289,6 +289,13 @@
 
 {% block content %}
 
+  <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+    <a href="{% url 'admin:core_membroorcoma_importar' %}"
+       style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;font-family:var(--font-body,'DM Sans',sans-serif);font-size:13px;font-weight:600;border:none;border-radius:var(--radius-md,8px);text-decoration:none;cursor:pointer;transition:all 0.2s;box-shadow:0 2px 8px rgba(16,185,129,.3);">
+      <i class="fa-solid fa-file-import" style="font-size:12px;"></i> Importar Usuários (Excel)
+    </a>
+  </div>
+
   <div class="stats-bar">
     <div class="stat-badge">
       <div class="stat-badge__icon stat-badge__icon--staff"><i class="fa-solid fa-user-shield"></i></div>

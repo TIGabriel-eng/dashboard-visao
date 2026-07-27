@@ -1,0 +1,259 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block title %}Importar Usuários | {{ site_title }}{% endblock %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <style>
+    #import-container {
+      max-width: 780px;
+      margin: 20px auto;
+      background: var(--bg-card, #122a4a);
+      border: 1px solid var(--border-color, #1e3350);
+      border-radius: var(--radius-lg, 16px);
+      overflow: hidden;
+    }
+    #import-container .import-header {
+      background: linear-gradient(135deg, #1a3d6e 0%, #2563eb 100%);
+      color: #fff;
+      padding: 24px 32px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    #import-container .import-header .header-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: rgba(255,255,255,.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    #import-container .import-header h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 600;
+      font-family: var(--font-display, 'Sora', sans-serif);
+      color: #fff !important;
+    }
+    #import-container .import-body {
+      padding: 28px 32px 32px;
+    }
+
+    .import-section {
+      margin-bottom: 24px;
+    }
+    .import-section__title {
+      font-size: 13px;
+      font-weight: 700;
+      font-family: var(--font-display, 'Sora', sans-serif);
+      color: var(--accent-orange, #ff9d00);
+      border-bottom: 2px solid var(--accent-blue, #1a3d6e);
+      padding-bottom: 6px;
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+
+    .form-row {
+      margin-bottom: 18px;
+    }
+    .form-row label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary, #8b9ab5);
+      margin-bottom: 5px;
+    }
+    .form-row input[type="file"] {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--bg-surface, #0f1f3a);
+      border: 1px solid var(--border-color, #1e3350);
+      border-radius: var(--radius-md, 8px);
+      color: var(--text-primary, #e2e8f0);
+      font-size: 14px;
+      font-family: var(--font-body, 'DM Sans', sans-serif);
+    }
+    .form-row .help-text {
+      font-size: 12px;
+      color: var(--text-muted, #6b7a99);
+      margin-top: 4px;
+    }
+    .form-row .error-text {
+      font-size: 12px;
+      color: var(--accent-red, #dc2626);
+      margin-top: 4px;
+    }
+
+    .import-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 28px;
+      background: linear-gradient(135deg, var(--accent-blue, #1a3d6e), var(--accent-blue-hover, #2563eb));
+      color: #fff;
+      font-family: var(--font-body, 'DM Sans', sans-serif);
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      border-radius: var(--radius-md, 8px);
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 2px 8px rgba(26,61,110,.3);
+    }
+    .import-btn:hover {
+      background: linear-gradient(135deg, var(--accent-blue-hover, #2563eb), #2a5a9e);
+      box-shadow: 0 4px 16px rgba(26,61,110,.5);
+      transform: translateY(-1px);
+    }
+
+    .template-info {
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      border-radius: var(--radius-md, 8px);
+      padding: 16px 20px;
+      margin-bottom: 20px;
+    }
+    .template-info p {
+      margin: 0 0 8px;
+      font-size: 13px;
+      color: var(--text-secondary, #8b9ab5);
+      line-height: 1.6;
+    }
+    .template-info p:last-child {
+      margin-bottom: 0;
+    }
+    .template-info a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #10b981;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .template-info a:hover {
+      text-decoration: underline;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-secondary, #8b9ab5);
+      text-decoration: none;
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+    .back-link:hover {
+      color: var(--text-primary, #e2e8f0);
+    }
+
+    .colunas-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin: 10px 0;
+    }
+    .coluna-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-primary, #e2e8f0);
+      padding: 6px 10px;
+      background: var(--bg-surface, #0f1f3a);
+      border-radius: var(--radius-sm, 6px);
+    }
+    .coluna-item .obrigatoria {
+      color: var(--accent-red, #dc2626);
+      font-size: 11px;
+      font-weight: 600;
+      margin-left: auto;
+    }
+    .coluna-item .opcional {
+      color: var(--text-muted, #6b7a99);
+      font-size: 11px;
+      font-weight: 600;
+      margin-left: auto;
+    }
+  </style>
+{% endblock %}
+
+{% block content_title %}
+  <a href="{% url 'admin:core_membroorcoma_changelist' %}" class="back-link">
+    <i class="fa-solid fa-arrow-left"></i> Voltar para Gestão de Usuários
+  </a>
+{% endblock %}
+
+{% block content %}
+<div id="import-container">
+  <div class="import-header">
+    <div class="header-icon"><i class="fa-solid fa-file-import"></i></div>
+    <div>
+      <h1>Importar Usuários em Massa</h1>
+      <p style="margin: 2px 0 0; font-size: 13px; opacity: .85; color: rgba(255,255,255,.85);">
+        Cadastre até milhares de usuários de uma só vez via planilha Excel
+      </p>
+    </div>
+  </div>
+
+  <div class="import-body">
+
+    <div class="template-info">
+      <p><strong>Passo 1:</strong> Baixe o template Excel para ver o formato esperado.</p>
+      <p><strong>Passo 2:</strong> Preencha os dados dos usuários na planilha.</p>
+      <p><strong>Passo 3:</strong> Faça upload do arquivo preenchido abaixo.</p>
+      <p style="margin-top: 12px;">
+        <a href="{% url 'admin:core_membroorcoma_baixar_template' %}">
+          <i class="fa-solid fa-download"></i> Baixar template Excel
+        </a>
+      </p>
+    </div>
+
+    <div class="import-section">
+      <div class="import-section__title">Colunas da Planilha</div>
+      <div class="colunas-grid">
+        <div class="coluna-item"><strong>username</strong> <span class="obrigatoria">Obrigatória</span></div>
+        <div class="coluna-item"><strong>email</strong> <span class="obrigatoria">Obrigatória</span></div>
+        <div class="coluna-item">first_name <span class="opcional">Opcional</span></div>
+        <div class="coluna-item">last_name <span class="opcional">Opcional</span></div>
+        <div class="coluna-item">role <span class="opcional">Opcional</span></div>
+        <div class="coluna-item">empresa <span class="opcional">Opcional</span></div>
+        <div class="coluna-item">cnpj <span class="opcional">Opcional</span></div>
+        <div class="coluna-item">telefone <span class="opcional">Opcional</span></div>
+        <div class="coluna-item">cargo <span class="opcional">Opcional</span></div>
+        <div class="coluna-item">unidade <span class="opcional">Opcional</span></div>
+        <div class="coluna-item">regime_federal <span class="opcional">Opcional</span></div>
+        <div class="coluna-item">is_empresario <span class="opcional">Opcional</span></div>
+      </div>
+    </div>
+
+    <div class="import-section">
+      <div class="import-section__title">Upload</div>
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="form-row">
+          <label for="{{ form.arquivo.id_for_label }}">{{ form.arquivo.label }}</label>
+          {{ form.arquivo }}
+          {% if form.arquivo.help_text %}
+            <div class="help-text">{{ form.arquivo.help_text }}</div>
+          {% endif %}
+          {% if form.arquivo.errors %}
+            {% for error in form.arquivo.errors %}
+              <div class="error-text">{{ error }}</div>
+            {% endfor %}
+          {% endif %}
+        </div>
+        <button type="submit" class="import-btn">
+          <i class="fa-solid fa-upload"></i> Importar Usuários
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

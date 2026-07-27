@@ -82,27 +82,11 @@
           </ul>
         </li>
 
-        <!-- Novidades -->
-        <li class="admin-nav-item{% if '/admin/core/novidade/' in request.path %} active{% endif %}">
-          <a href="{% url 'admin:core_novidade_changelist' %}" class="typing-nav">
-            <i class="fa-solid fa-star"></i>
-            <span class="nav-text">Novidades</span>
-          </a>
-        </li>
-
         <!-- Membros -->
         <li class="admin-nav-item{% if '/admin/core/membro-orcoma/' in request.path %} active{% endif %}">
           <a href="{% url 'admin:core_membroorcoma_changelist' %}" class="typing-nav">
             <i class="fa-solid fa-user-shield"></i>
             <span class="nav-text">Membros</span>
-          </a>
-        </li>
-
-        <!-- Clientes -->
-        <li class="admin-nav-item{% if '/admin/core/cliente/' in request.path %} active{% endif %}">
-          <a href="{% url 'admin:core_cliente_changelist' %}" class="typing-nav">
-            <i class="fa-solid fa-users"></i>
-            <span class="nav-text">Clientes</span>
           </a>
         </li>
 

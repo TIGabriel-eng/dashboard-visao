@@ -10,7 +10,8 @@ from django.db.models import Count, Q
 from django.contrib.auth import get_user_model
 from django import forms
 from .models import Curso, Video, Modulo, Material, Trilha, Evento, Live, Novidade, LogAtividade, Cliente, MembroOrcoma, CursoVisualizacao, Matricula, Plano, Ambiente, Perfil, Permissao, FormacaoAcademica, Habilidade, AssinaturaPlano, MetaSemanal, RegraAtribuicaoPlano, AcessoRoleAcademia
-from .forms import CursoAdminForm, MembroOrcomaAddForm, ClienteAddForm, EMPRESA_PADRAO
+from .forms import CursoAdminForm, MembroOrcomaAddForm, ClienteAddForm, ImportarUsuariosForm, EMPRESA_PADRAO
+from .services.importacao import processar_arquivo_excel, gerar_template_bytes, gerar_relatorio_bytes
 
 User = get_user_model()
 
@@ -377,6 +378,9 @@ class PerfilInline(admin.StackedInline):
 @admin.register(Cliente)
 class ClienteAdmin(BaseUserAdmin):
     change_list_template = 'admin/core/cliente/change_list.html'
+
+    def get_model_perms(self, request):
+        return {}
     inlines = [PerfilInline]
     list_display = ('username', 'get_full_name', 'email', 'role_info', 'is_active', 'date_joined')
     list_filter = ('is_active', 'date_joined')
@@ -584,6 +588,15 @@ class MembroOrcomaAdmin(BaseUserAdmin):
             path('<int:pk>/delete_cliente/',
                  self.admin_site.admin_view(self.delete_cliente_view),
                  name='core_membroorcoma_delete_cliente'),
+            path('importar/',
+                 self.admin_site.admin_view(self.importar_usuarios_view),
+                 name='core_membroorcoma_importar'),
+            path('importar/template/',
+                 self.admin_site.admin_view(self.baixar_template_view),
+                 name='core_membroorcoma_baixar_template'),
+            path('importar/relatorio/',
+                 self.admin_site.admin_view(self.download_relatorio_view),
+                 name='core_membroorcoma_download_relatorio'),
         ]
         return custom_urls + super().get_urls()
 
@@ -690,10 +703,68 @@ class MembroOrcomaAdmin(BaseUserAdmin):
         }
         return render(request, 'admin/core/cliente/delete_confirm.html', context)
 
+    def importar_usuarios_view(self, request):
+        if request.method == 'POST':
+            form = ImportarUsuariosForm(request.POST, request.FILES)
+            if form.is_valid():
+                arquivo = request.FILES['arquivo']
+                resultado, erro = processar_arquivo_excel(arquivo)
+                if erro:
+                    for campo, msg in erro.items():
+                        self.message_user(request, msg, level=messages.ERROR)
+                    return HttpResponseRedirect(reverse('admin:core_membroorcoma_importar'))
 
-class VideoInline(admin.TabularInline):
+                request.session['relatorio_importacao'] = resultado['usuarios']
+                request.session['relatorio_timestamp'] = resultado.get('timestamp', '')
+
+                return render(request, 'admin/core/membro_orcoma/importar_resultado.html', {
+                    **self.admin_site.each_context(request),
+                    'title': 'Resultado da Importação',
+                    'resultado': resultado,
+                    'opts': self.model._meta,
+                })
+        else:
+            form = ImportarUsuariosForm()
+
+        return render(request, 'admin/core/membro_orcoma/importar_usuarios.html', {
+            **self.admin_site.each_context(request),
+            'title': 'Importar Usuários',
+            'form': form,
+            'opts': self.model._meta,
+        })
+
+    def baixar_template_view(self, request):
+        from django.http import HttpResponse
+
+        output = gerar_template_bytes()
+        response = HttpResponse(
+            output.read(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        response['Content-Disposition'] = 'attachment; filename="template_usuarios_massa.xlsx"'
+        return response
+
+    def download_relatorio_view(self, request):
+        from django.http import HttpResponse
+
+        dados = request.session.pop('relatorio_importacao', None)
+        if not dados:
+            self.message_user(request, 'Nenhum relatório disponível.', level=messages.WARNING)
+            return HttpResponseRedirect(reverse('admin:core_membroorcoma_changelist'))
+
+        output = gerar_relatorio_bytes(dados)
+        response = HttpResponse(
+            output.read(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        response['Content-Disposition'] = 'attachment; filename="relatorio_usuarios_cadastrados.xlsx"'
+        return response
+
+
+class VideoInline(admin.StackedInline):
     model = Video
     extra = 0
+    can_delete = True
     fields = ('modulo', 'titulo', 'arquivo', 'url_externa', 'ordem', 'ativo')
     ordering = ('ordem',)
 
@@ -705,9 +776,10 @@ class MaterialInline(admin.TabularInline):
     ordering = ('ordem',)
 
 
-class ModuloInline(admin.TabularInline):
+class ModuloInline(admin.StackedInline):
     model = Modulo
     extra = 0
+    can_delete = True
     fields = ('titulo', 'descricao', 'ordem', 'ativo')
     ordering = ('ordem',)
 
@@ -717,7 +789,7 @@ class CursoAdmin(admin.ModelAdmin):
     form = CursoAdminForm
     inlines = [VideoInline, ModuloInline]
     list_display = ('titulo', 'tipo', 'ambiente', 'status', 'is_gratuito', 'is_recomendado', 'video_display', 'created_at')
-    list_filter = ('tipo', 'status', 'ambiente', 'is_gratuito', 'is_recomendado')
+    list_filter = ('ambiente',)
     search_fields = ('titulo', 'descricao', 'slug')
     list_editable = ('status',)
     date_hierarchy = 'created_at'
@@ -734,6 +806,11 @@ class CursoAdmin(admin.ModelAdmin):
             'description': 'Faça upload da thumbnail (capa) do curso.',
         }),
     )
+
+    class Media:
+        css = {
+            'all': ('admin/css/curso_admin.css',)
+        }
 
     def video_display(self, obj):
         if obj.video:
@@ -796,6 +873,9 @@ class NovidadeAdmin(admin.ModelAdmin):
     list_display = ('titulo', 'ativo', 'created_at')
     list_filter = ('ativo',)
     search_fields = ('titulo',)
+
+    def get_model_perms(self, request):
+        return {}
 
 
 @admin.register(LogAtividade)

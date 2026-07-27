@@ -9,6 +9,23 @@ from core.services.acesso import validar_role_planos, get_academias_permitidas_p
 EMPRESA_PADRAO = 'Orcoma-Org. Comercial e Serviços'
 
 
+class ImportarUsuariosForm(forms.Form):
+    arquivo = forms.FileField(
+        label='Arquivo Excel (.xlsx)',
+        help_text='Selecione o arquivo Excel com os dados dos usuários.',
+        widget=forms.FileInput(attrs={'accept': '.xlsx'}),
+    )
+
+    def clean_arquivo(self):
+        arquivo = self.cleaned_data.get('arquivo')
+        if arquivo:
+            if not arquivo.name.endswith('.xlsx'):
+                raise ValidationError('O arquivo deve ter extensão .xlsx')
+            if arquivo.size > 10 * 1024 * 1024:
+                raise ValidationError('O arquivo é muito grande. Tamanho máximo: 10MB.')
+        return arquivo
+
+
 class MembroOrcomaAddForm(UserCreationForm):
     first_name = forms.CharField(label='Primeiro Nome', max_length=30)
     last_name = forms.CharField(label='Último Nome', max_length=30)

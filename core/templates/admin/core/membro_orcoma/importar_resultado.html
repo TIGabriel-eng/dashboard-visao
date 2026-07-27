@@ -1,0 +1,304 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block title %}Resultado da Importação | {{ site_title }}{% endblock %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <style>
+    #result-container {
+      max-width: 860px;
+      margin: 20px auto;
+    }
+
+    .result-card {
+      background: var(--bg-card, #122a4a);
+      border: 1px solid var(--border-color, #1e3350);
+      border-radius: var(--radius-lg, 16px);
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .result-card__header {
+      padding: 24px 32px;
+      border-bottom: 1px solid var(--border-color, #1e3350);
+    }
+    .result-card__header--success {
+      background: linear-gradient(135deg, rgba(16,185,129,.12), rgba(16,185,129,.04));
+      border-bottom-color: rgba(16,185,129,.2);
+    }
+    .result-card__header--partial {
+      background: linear-gradient(135deg, rgba(245,158,11,.12), rgba(245,158,11,.04));
+      border-bottom-color: rgba(245,158,11,.2);
+    }
+    .result-card__header--error {
+      background: linear-gradient(135deg, rgba(239,68,68,.12), rgba(239,68,68,.04));
+      border-bottom-color: rgba(239,68,68,.2);
+    }
+    .result-card__title {
+      font-family: var(--font-display, 'Sora', sans-serif);
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0 0 4px;
+      color: var(--text-primary, #e2e8f0);
+    }
+    .result-card__subtitle {
+      font-size: 13px;
+      color: var(--text-secondary, #8b9ab5);
+      margin: 0;
+    }
+    .result-card__body {
+      padding: 28px 32px 32px;
+    }
+
+    .stats-bar {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .stat-item {
+      flex: 1;
+      min-width: 140px;
+      text-align: center;
+      padding: 16px 20px;
+      background: var(--bg-surface, #0f1f3a);
+      border-radius: var(--radius-md, 8px);
+      border: 1px solid var(--border-color, #1e3350);
+    }
+    .stat-item__value {
+      font-family: var(--font-display, 'Sora', sans-serif);
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .stat-item__value--success { color: #10b981; }
+    .stat-item__value--error { color: #ef4444; }
+    .stat-item__value--total { color: #60a5fa; }
+    .stat-item__label {
+      font-size: 12px;
+      color: var(--text-secondary, #8b9ab5);
+      margin-top: 4px;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      font-family: var(--font-display, 'Sora', sans-serif);
+      color: var(--accent-orange, #ff9d00);
+      border-bottom: 2px solid var(--accent-blue, #1a3d6e);
+      padding-bottom: 6px;
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+
+    .user-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+    }
+    .user-table th {
+      background: var(--bg-surface, #0f1f3a);
+      color: var(--text-secondary, #8b9ab5);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 10px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color, #1e3350);
+    }
+    .user-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border-color, #1e3350);
+      color: var(--text-primary, #e2e8f0);
+      font-size: 13px;
+    }
+    .user-table tr:last-child td { border-bottom: none; }
+    .user-table tr:hover td { background: rgba(255,255,255,.03); }
+
+    .erro-item {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border-color, #1e3350);
+      font-size: 13px;
+      color: var(--text-primary, #e2e8f0);
+    }
+    .erro-item:last-child { border-bottom: none; }
+    .erro-item strong { color: var(--accent-red, #dc2626); }
+    .erro-item .motivo { color: var(--text-secondary, #8b9ab5); }
+
+    .action-buttons {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+      flex-wrap: wrap;
+    }
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      font-family: var(--font-body, 'DM Sans', sans-serif);
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      border-radius: var(--radius-md, 8px);
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .action-btn:hover {
+      transform: translateY(-1px);
+    }
+    .action-btn--primary {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(16,185,129,.3);
+    }
+    .action-btn--primary:hover {
+      box-shadow: 0 4px 16px rgba(16,185,129,.5);
+    }
+    .action-btn--secondary {
+      background: linear-gradient(135deg, var(--accent-blue, #1a3d6e), var(--accent-blue-hover, #2563eb));
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(26,61,110,.3);
+    }
+    .action-btn--secondary:hover {
+      box-shadow: 0 4px 16px rgba(26,61,110,.5);
+    }
+    .action-btn--danger {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(239,68,68,.3);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted, #6b7a99);
+      font-size: 13px;
+    }
+    .empty-state i {
+      font-size: 28px;
+      display: block;
+      margin-bottom: 8px;
+      opacity: 0.4;
+    }
+
+    .password-text {
+      font-family: monospace;
+      font-size: 12px;
+      background: var(--bg-surface, #0f1f3a);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #fbbf24;
+    }
+  </style>
+{% endblock %}
+
+{% block content_title %}
+  <a href="{% url 'admin:core_membroorcoma_changelist' %}" class="back-link" style="display:inline-flex;align-items:center;gap:6px;color:var(--text-secondary,#8b9ab5);text-decoration:none;font-size:13px;margin-bottom:12px;">
+    <i class="fa-solid fa-arrow-left"></i> Voltar para Gestão de Usuários
+  </a>
+{% endblock %}
+
+{% block content %}
+<div id="result-container">
+
+  <div class="result-card">
+    <div class="result-card__header
+      {% if resultado.total_erros == 0 %}result-card__header--success
+      {% elif resultado.sucessos > 0 %}result-card__header--partial
+      {% else %}result-card__header--error{% endif %}">
+      <h2 class="result-card__title">
+        {% if resultado.total_erros == 0 %}
+          <i class="fa-solid fa-check-circle" style="color:#10b981;"></i> Importação concluída com sucesso!
+        {% elif resultado.sucessos > 0 %}
+          <i class="fa-solid fa-exclamation-triangle" style="color:#f59e0b;"></i> Importação concluída com alertas
+        {% else %}
+          <i class="fa-solid fa-times-circle" style="color:#ef4444;"></i> Nenhum usuário foi cadastrado
+        {% endif %}
+      </h2>
+      <p class="result-card__subtitle">
+        Processados {{ resultado.total_processado }} registro(s) em {{ resultado.timestamp|default:"menos de 1 minuto" }}
+      </p>
+    </div>
+    <div class="result-card__body">
+
+      <div class="stats-bar">
+        <div class="stat-item">
+          <div class="stat-item__value stat-item__value--success">{{ resultado.sucessos }}</div>
+          <div class="stat-item__label">Usuários cadastrados</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-item__value stat-item__value--error">{{ resultado.total_erros }}</div>
+          <div class="stat-item__label">Erros</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-item__value stat-item__value--total">{{ resultado.total_processado }}</div>
+          <div class="stat-item__label">Total processado</div>
+        </div>
+      </div>
+
+      {% if resultado.usuarios %}
+      <div style="margin-bottom: 24px;">
+        <div class="section-title">Usuários Cadastrados</div>
+        <div style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-color, #1e3350); border-radius: var(--radius-md, 8px);">
+          <table class="user-table">
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Senha</th>
+                <th>Role</th>
+                <th>Empresa</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for u in resultado.usuarios %}
+              <tr>
+                <td><strong>{{ u.username }}</strong></td>
+                <td>{{ u.email }}</td>
+                <td><span class="password-text">{{ u.password }}</span></td>
+                <td>{{ u.role }}</td>
+                <td>{{ u.empresa|default:"-" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if resultado.erros %}
+      <div style="margin-bottom: 24px;">
+        <div class="section-title">Erros</div>
+        <div style="border: 1px solid rgba(239,68,68,.2); border-radius: var(--radius-md, 8px); background: rgba(239,68,68,.04);">
+          {% for erro in resultado.erros %}
+          <div class="erro-item">
+            <strong>Linha {{ erro.linha }}</strong> — {{ erro.username }}<br>
+            <span class="motivo">{{ erro.motivo }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="action-buttons">
+        {% if resultado.usuarios %}
+        <a href="{% url 'admin:core_membroorcoma_download_relatorio' %}" class="action-btn action-btn--primary">
+          <i class="fa-solid fa-download"></i> Baixar relatório com senhas
+        </a>
+        {% endif %}
+        <a href="{% url 'admin:core_membroorcoma_importar' %}" class="action-btn action-btn--secondary">
+          <i class="fa-solid fa-upload"></i> Importar outro arquivo
+        </a>
+        <a href="{% url 'admin:core_membroorcoma_changelist' %}" class="action-btn action-btn--secondary">
+          <i class="fa-solid fa-users"></i> Ver usuários
+        </a>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,22 @@
+#changelist-form .object-tools {
+    float: left;
+    margin-left: 0;
+}
+#changelist-form .object-tools a.addlink {
+    margin-left: 0;
+}
+
+/* Aumenta largura dos inlines (Módulos e Vídeos) no change form */
+.inline-group {
+    max-width: 100% !important;
+    width: 1300px !important;
+}
+.inline-group .inline-related {
+    width: 100% !important;
+}
+.inline-group .form-row {
+    width: 100% !important;
+}
+.inline-group fieldset {
+    width: 100% !important;
+}
