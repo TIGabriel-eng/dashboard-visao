@@ -1,5 +1,6 @@
 import logging
 from rest_framework import viewsets, permissions, generics, status
+from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
 from .models import Curso, Trilha, Evento, Live, Novidade, LogAtividade, CursoVisualizacao, Matricula, FormacaoAcademica, Habilidade, AssinaturaPlano, Ambiente, Modulo, Material, Certificado, MetaSemanal, Video
@@ -144,6 +145,26 @@ class CursoViewSet(viewsets.ModelViewSet):
                 )
 
         return qs.distinct()
+
+    def list(self, request, *args, **kwargs):
+        # Cache público (sem user_id) — apenas para visitantes não autenticados
+        # Usuários logados têm permissões diferentes, então não cacheamos
+        user = request.user
+        if not user.is_authenticated:
+            ambiente = request.query_params.get('ambiente', '')
+            cache_key = f'cursos_list_public_{ambiente}'
+            cached = cache.get(cache_key)
+            if cached is not None:
+                return Response(cached)
+        
+        response = super().list(request, *args, **kwargs)
+        
+        if not user.is_authenticated and response.status_code == 200:
+            ambiente = request.query_params.get('ambiente', '')
+            cache_key = f'cursos_list_public_{ambiente}'
+            cache.set(cache_key, response.data, 60)  # 60 segundos
+        
+        return response
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -474,6 +495,13 @@ def corrigir_texto(request):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def dashboard_stats(request):
+    # Cache com user_id (para autenticados) ou chave pública (visitantes)
+    user = request.user
+    cache_key = f'dashboard_stats_{user.id if user.is_authenticated else "public"}'
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return Response(cached)
+
     agora = timezone.now()
     sete_dias_atras = agora - timedelta(days=7)
     trinta_dias_atras = agora - timedelta(days=30)
@@ -576,7 +604,7 @@ def dashboard_stats(request):
             'mensagem': f'{usuarios_inativos} usuário(s) inativo(s)',
         })
 
-    return Response({
+    data = {
         'metricas': metricas,
         'crescimento_usuarios': crescimento,
         'ultimas_atividades': ultimas_atividades,
@@ -586,7 +614,9 @@ def dashboard_stats(request):
             'top_trilhas': destaques_trilhas,
         },
         'alertas': alertas,
-    })
+    }
+    cache.set(cache_key, data, 120)  # 120 segundos
+    return Response(data)
 
 dashboard_stats.throttle_scope = 'dashboard'
 
