@@ -529,31 +529,6 @@ class Habilidade(models.Model):
         return self.nome
 
 
-class AssinaturaPlano(models.Model):
-    STATUS_CHOICES = [
-        ('ativa', 'Ativo'),
-        ('inativo', 'Inativo'),
-        ('expirada', 'Expirado'),
-        ('cancelada', 'Cancelado'),
-    ]
-
-    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='assinaturas')
-    plano = models.ForeignKey(Plano, on_delete=models.CASCADE, related_name='assinaturas')
-    data_contratacao = models.DateField()
-    data_expiracao = models.DateField()
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ativa')
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        verbose_name = 'Assinatura de Plano'
-        verbose_name_plural = 'Assinaturas de Planos'
-        ordering = ['-data_contratacao']
-
-    def __str__(self):
-        labels = dict(self.STATUS_CHOICES)
-        return f'{self.usuario.username} - {self.plano.nome} ({labels.get(self.status, self.status)})'
-
-
 class RegraAtribuicaoPlano(models.Model):
     cnpj = models.CharField(max_length=18, unique=True)
     empresa = models.CharField(max_length=200)

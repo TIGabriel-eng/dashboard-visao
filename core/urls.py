@@ -12,7 +12,6 @@ router.register(r'logs', views.LogAtividadeViewSet, basename='log')
 router.register(r'matriculas', views.MatriculaViewSet, basename='matricula')
 router.register(r'formacoes', views.FormacaoAcademicaViewSet, basename='formacao')
 router.register(r'habilidades', views.HabilidadeViewSet, basename='habilidade')
-router.register(r'assinaturas', views.AssinaturaPlanoViewSet, basename='assinatura')
 router.register(r'metas-semanais', views.MetaSemanalViewSet, basename='meta-semanal')
 
 urlpatterns = [
@@ -25,7 +24,6 @@ urlpatterns = [
     path('register/', views.RegisterView.as_view(), name='register'),
     path('me/', views.MeView.as_view(), name='me'),
     path('avatar/', views.AvatarUploadView.as_view(), name='avatar-upload'),
-    path('admin-assinaturas/', views.AdminAssinaturaListView.as_view(), name='admin-assinaturas'),
     path('user-permissions/', views.user_permissions, name='user-permissions'),
     path('cursos/<slug:slug>/modulos/', views.curso_modulos, name='curso-modulos'),
     path('modulos/<int:pk>/materiais/', views.modulo_materiais, name='modulo-materiais'),

@@ -6,7 +6,7 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import (
     Curso, Trilha, Evento, Novidade, LogAtividade, Perfil, Matricula,
-    FormacaoAcademica, Habilidade, AssinaturaPlano, Video, Modulo, Material,
+    FormacaoAcademica, Habilidade, Video, Modulo, Material,
     Certificado, MetaSemanal, Avaliacao,
 )
 from core.services.acesso import user_can_access_curso, get_user_role
@@ -447,39 +447,6 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             'avatar_url': perfil.avatar.url if perfil and perfil.avatar else '',
         }
         return data
-
-
-class AssinaturaPlanoSerializer(serializers.ModelSerializer):
-    plano_nome = serializers.CharField(source='plano.nome', read_only=True)
-    plano_descricao = serializers.CharField(source='plano.descricao', read_only=True)
-    dias_restantes = serializers.SerializerMethodField()
-    total_dias = serializers.SerializerMethodField()
-    percentual_usado = serializers.SerializerMethodField()
-
-    class Meta:
-        model = AssinaturaPlano
-        fields = (
-            'id', 'plano_nome', 'plano_descricao',
-            'data_contratacao', 'data_expiracao',
-            'status', 'dias_restantes', 'total_dias', 'percentual_usado',
-        )
-
-    def get_dias_restantes(self, obj):
-        from datetime import date
-        delta = obj.data_expiracao - date.today()
-        return max(delta.days, 0)
-
-    def get_total_dias(self, obj):
-        delta = obj.data_expiracao - obj.data_contratacao
-        return max(delta.days, 0)
-
-    def get_percentual_usado(self, obj):
-        from datetime import date
-        total = (obj.data_expiracao - obj.data_contratacao).days
-        if total <= 0:
-            return 100
-        usado = total - max((obj.data_expiracao - date.today()).days, 0)
-        return min(round((usado / total) * 100), 100)
 
 
 class ModuloSerializer(serializers.ModelSerializer):

@@ -76,9 +76,6 @@
             <li class="{% if '/admin/core/evento/' in request.path %}active{% endif %}">
               <a href="{% url 'admin:core_evento_changelist' %}">Eventos</a>
             </li>
-            <li class="{% if '/admin/core/live/' in request.path %}active{% endif %}">
-              <a href="{% url 'admin:core_live_changelist' %}">Lives</a>
-            </li>
           </ul>
         </li>
 
@@ -99,13 +96,6 @@
           </a>
         </li>
 
-        <!-- Assinaturas -->
-        <li class="admin-nav-item{% if '/admin/core/assinaturaplano/' in request.path %} active{% endif %}">
-          <a href="{% url 'admin:core_assinaturaplano_changelist' %}" class="typing-nav">
-            <i class="fa-solid fa-file-invoice"></i>
-            <span class="nav-text">Assinaturas</span>
-          </a>
-        </li>
         <!-- Permissões -->
         <li class="admin-nav-item{% if '/admin/core/permissao/' in request.path %} active{% endif %}">
           <a href="{% url 'admin:core_permissao_changelist' %}" class="typing-nav">

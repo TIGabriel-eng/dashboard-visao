@@ -9,7 +9,7 @@ from django.urls import path, reverse
 from django.db.models import Count, Q
 from django.contrib.auth import get_user_model
 from django import forms
-from .models import Curso, Video, Modulo, Material, Trilha, Evento, Novidade, LogAtividade, Cliente, MembroOrcoma, CursoVisualizacao, Matricula, Plano, Ambiente, Perfil, Permissao, FormacaoAcademica, Habilidade, AssinaturaPlano, MetaSemanal, RegraAtribuicaoPlano, AcessoRoleAcademia
+from .models import Curso, Video, Modulo, Material, Trilha, Evento, Novidade, LogAtividade, Cliente, MembroOrcoma, CursoVisualizacao, Matricula, Plano, Ambiente, Perfil, Permissao, FormacaoAcademica, Habilidade, MetaSemanal, RegraAtribuicaoPlano, AcessoRoleAcademia
 from .forms import CursoAdminForm, MembroOrcomaAddForm, ClienteAddForm, ImportarUsuariosForm, EMPRESA_PADRAO
 from .services.importacao import processar_arquivo_excel, gerar_template_bytes, gerar_relatorio_bytes
 
@@ -970,36 +970,4 @@ class HabilidadeAdmin(admin.ModelAdmin):
     raw_id_fields = ('usuario',)
 
 
-from django.contrib.admin import SimpleListFilter
 
-class StatusAssinaturaFilter(SimpleListFilter):
-    title = 'status'
-    parameter_name = 'status_filtro'
-
-    def lookups(self, request, model_admin):
-        return [
-            ('ativa', 'Ativo'),
-            ('inativo', 'Inativo'),
-            ('expirada', 'Expirado'),
-            ('cancelada', 'Cancelado'),
-        ]
-
-    def queryset(self, request, queryset):
-        value = self.value()
-        if value == 'ativa':
-            return queryset.filter(status='ativa')
-        if value == 'inativo':
-            return queryset.filter(status__in=['expirada', 'cancelada'])
-        if value == 'expirada':
-            return queryset.filter(status='expirada')
-        if value == 'cancelada':
-            return queryset.filter(status='cancelada')
-        return queryset
-
-
-@admin.register(AssinaturaPlano)
-class AssinaturaPlanoAdmin(admin.ModelAdmin):
-    list_display = ('usuario', 'plano', 'data_contratacao', 'data_expiracao', 'status')
-    list_filter = (StatusAssinaturaFilter,)
-    search_fields = ('usuario__username', 'plano__nome')
-    raw_id_fields = ('usuario', 'plano')

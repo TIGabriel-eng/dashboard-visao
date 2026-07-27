@@ -3,7 +3,7 @@ from rest_framework import viewsets, permissions, generics, status
 from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
-from .models import Curso, Trilha, Evento, Novidade, LogAtividade, CursoVisualizacao, Matricula, FormacaoAcademica, Habilidade, AssinaturaPlano, Ambiente, Modulo, Material, Certificado, MetaSemanal, Video
+from .models import Curso, Trilha, Evento, Novidade, LogAtividade, CursoVisualizacao, Matricula, FormacaoAcademica, Habilidade, Ambiente, Modulo, Material, Certificado, MetaSemanal, Video
 from core.services.acesso import filtrar_cursos_acessiveis, user_can_access_curso, get_academias_permitidas, get_user_role, get_academias_permitidas_para_role
 from .serializers import (
     CursoSerializer, CursoListSerializer, TrilhaSerializer, TrilhaListSerializer,
@@ -11,7 +11,7 @@ from .serializers import (
     RegisterSerializer, MeSerializer, CustomTokenObtainPairSerializer,
     MatriculaSerializer, MatriculaCreateSerializer,
     FormacaoAcademicaSerializer, HabilidadeSerializer,
-    AssinaturaPlanoSerializer, ModuloSerializer, MaterialSerializer,
+    ModuloSerializer, MaterialSerializer,
     CertificadoSerializer, MetaSemanalSerializer, AvaliacaoSerializer
 )
 from django.contrib.auth.models import User
@@ -614,36 +614,6 @@ def dashboard_stats(request):
     return Response(data)
 
 dashboard_stats.throttle_scope = 'dashboard'
-
-
-class AssinaturaPlanoViewSet(viewsets.ModelViewSet):
-    serializer_class = AssinaturaPlanoSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        return AssinaturaPlano.objects.filter(usuario=self.request.user)
-
-    def perform_create(self, serializer):
-        serializer.save(usuario=self.request.user)
-
-
-class AdminAssinaturaListView(generics.ListAPIView):
-    serializer_class = AssinaturaPlanoSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        if self.request.user.is_staff:
-            return AssinaturaPlano.objects.select_related('usuario', 'plano').all()
-        return AssinaturaPlano.objects.filter(usuario=self.request.user)
-
-    def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
-        data = serializer.data
-        if request.user.is_staff:
-            for item, obj in zip(data, queryset):
-                item['usuario'] = obj.usuario.get_full_name() or obj.usuario.username
-        return Response(data)
 
 
 @staff_member_required
