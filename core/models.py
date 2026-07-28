@@ -310,6 +310,7 @@ class Evento(models.Model):
     data = models.DateTimeField()
     local = models.CharField(max_length=255, blank=True)
     capacidade = models.PositiveIntegerField(default=0, help_text='0 = sem limite')
+    url = models.URLField(blank=True, verbose_name='Link externo')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -343,6 +344,7 @@ class Matricula(models.Model):
     concluido = models.BooleanField(default=False)
     concluido_em = models.DateTimeField(null=True, blank=True)
     ultimo_segundo_assistido = models.PositiveIntegerField(default=0, help_text='Último segundo do vídeo assistido')
+    tempo_total_assistido = models.FloatField(default=0, help_text='Tempo total acumulado assistido em segundos')
     video_corrente = models.ForeignKey(
         'Video',
         on_delete=models.SET_NULL,
@@ -416,6 +418,33 @@ class LogAtividade(models.Model):
 
     def __str__(self):
         return f'{self.usuario} - {self.acao}'
+
+
+class Notificacao(models.Model):
+    TIPO_CHOICES = [
+        ('boas_vindas', 'Boas-vindas'),
+        ('curso_concluido', 'Curso Concluído'),
+        ('evento', 'Evento'),
+    ]
+
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notificacoes')
+    titulo = models.CharField(max_length=255)
+    mensagem = models.TextField()
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
+    lida = models.BooleanField(default=False)
+    link = models.CharField(max_length=200, blank=True, help_text='URL opcional para ação relacionada')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Notificação'
+        verbose_name_plural = 'Notificações'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['usuario', 'lida', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.titulo} - {self.usuario.username}'
 
 
 class Perfil(models.Model):
@@ -554,6 +583,7 @@ class MetaSemanal(models.Model):
     semana_fim = models.DateField(help_text='Fim da semana')
     concluida = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+    baseline_tempo = models.FloatField(default=0, help_text='Tempo total acumulado (em segundos) no momento da criação da meta')
 
     class Meta:
         verbose_name = 'Meta Semanal'

@@ -13,6 +13,7 @@ router.register(r'matriculas', views.MatriculaViewSet, basename='matricula')
 router.register(r'formacoes', views.FormacaoAcademicaViewSet, basename='formacao')
 router.register(r'habilidades', views.HabilidadeViewSet, basename='habilidade')
 router.register(r'metas-semanais', views.MetaSemanalViewSet, basename='meta-semanal')
+router.register(r'notificacoes', views.NotificacaoViewSet, basename='notificacao')
 
 urlpatterns = [
     path('', include(router.urls)),

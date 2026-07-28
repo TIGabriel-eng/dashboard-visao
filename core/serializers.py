@@ -7,7 +7,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import (
     Curso, Trilha, Evento, Novidade, LogAtividade, Perfil, Matricula,
     FormacaoAcademica, Habilidade, Video, Modulo, Material,
-    Certificado, MetaSemanal, Avaliacao,
+    Certificado, MetaSemanal, Avaliacao, Notificacao,
 )
 from core.services.acesso import user_can_access_curso, get_user_role
 
@@ -544,3 +544,10 @@ class MetaSemanalSerializer(serializers.ModelSerializer):
     class Meta:
         model = MetaSemanal
         fields = ('id', 'titulo', 'meta_horas', 'horas_concluidas', 'semana_inicio', 'semana_fim', 'concluida', 'percentual')
+
+
+class NotificacaoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notificacao
+        fields = ('id', 'titulo', 'mensagem', 'tipo', 'lida', 'link', 'created_at')
+        read_only_fields = ('id', 'created_at')

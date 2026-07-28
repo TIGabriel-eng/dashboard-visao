@@ -3,7 +3,7 @@ from rest_framework import viewsets, permissions, generics, status
 from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
-from .models import Curso, Trilha, Evento, Novidade, LogAtividade, CursoVisualizacao, Matricula, FormacaoAcademica, Habilidade, Ambiente, Modulo, Material, Certificado, MetaSemanal, Video
+from .models import Curso, Trilha, Evento, Novidade, LogAtividade, CursoVisualizacao, Matricula, FormacaoAcademica, Habilidade, Ambiente, Modulo, Material, Certificado, MetaSemanal, Video, Notificacao
 from core.services.acesso import filtrar_cursos_acessiveis, user_can_access_curso, get_academias_permitidas, get_user_role, get_academias_permitidas_para_role
 from .serializers import (
     CursoSerializer, CursoListSerializer, TrilhaSerializer, TrilhaListSerializer,
@@ -12,7 +12,8 @@ from .serializers import (
     MatriculaSerializer, MatriculaCreateSerializer,
     FormacaoAcademicaSerializer, HabilidadeSerializer,
     ModuloSerializer, MaterialSerializer,
-    CertificadoSerializer, MetaSemanalSerializer, AvaliacaoSerializer
+    CertificadoSerializer, MetaSemanalSerializer, AvaliacaoSerializer,
+    NotificacaoSerializer
 )
 from django.contrib.auth.models import User
 from rest_framework.decorators import api_view, permission_classes, action
@@ -210,7 +211,10 @@ class MetaSemanalViewSet(viewsets.ModelViewSet):
         return MetaSemanal.objects.filter(usuario=self.request.user)
 
     def perform_create(self, serializer):
-        serializer.save(usuario=self.request.user)
+        total = Matricula.objects.filter(usuario=self.request.user).aggregate(
+            total=models.Sum('tempo_total_assistido')
+        )['total'] or 0
+        serializer.save(usuario=self.request.user, baseline_tempo=total)
 
 
 class NovidadeViewSet(viewsets.ReadOnlyModelViewSet):
@@ -257,6 +261,15 @@ class MatriculaViewSet(viewsets.ModelViewSet):
 
         Certificado.objects.get_or_create(matricula=matricula)
 
+        curso = matricula.curso
+        Notificacao.objects.create(
+            usuario=request.user,
+            titulo='Curso Concluído!',
+            mensagem=f'Parabéns! Você concluiu {curso.titulo}. Seu certificado está disponível.',
+            tipo='curso_concluido',
+            link='/certificados',
+        )
+
         serializer = MatriculaSerializer(matricula)
         return Response(serializer.data)
 
@@ -302,6 +315,9 @@ class MatriculaViewSet(viewsets.ModelViewSet):
             defaults={'ultimo_segundo_assistido': segundo, 'video_corrente_id': video_id}
         )
         if not created:
+            if segundo > matricula.ultimo_segundo_assistido:
+                delta = segundo - matricula.ultimo_segundo_assistido
+                matricula.tempo_total_assistido += min(delta, 30)
             matricula.ultimo_segundo_assistido = segundo
             if video_id:
                 matricula.video_corrente_id = video_id
@@ -357,6 +373,16 @@ class RegisterView(generics.CreateAPIView):
     permission_classes = [AllowAny]
     serializer_class = RegisterSerializer
     throttle_scope = 'registro'
+
+    def perform_create(self, serializer):
+        user = serializer.save()
+        Notificacao.objects.create(
+            usuario=user,
+            titulo='Bem-vindo à Orcoma Academy!',
+            mensagem='Olá! Que bom ter você conosco. Explore nossos cursos, eventos e trilhas de aprendizagem.',
+            tipo='boas_vindas',
+            link='/meus-cursos',
+        )
 
 
 class MeView(generics.RetrieveUpdateAPIView):
@@ -440,6 +466,62 @@ class HabilidadeViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(usuario=self.request.user)
+
+
+class NotificacaoViewSet(viewsets.ModelViewSet):
+    serializer_class = NotificacaoSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Notificacao.objects.filter(usuario=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(usuario=self.request.user)
+
+    @action(detail=False, methods=['post'], url_path='marcar-todas-lidas')
+    def marcar_todas_lidas(self, request):
+        Notificacao.objects.filter(usuario=request.user, lida=False).update(lida=True)
+        return Response({'detail': 'Todas as notificações foram marcadas como lidas.'}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['get'], url_path='nao-lidas/count')
+    def count_nao_lidas(self, request):
+        count = Notificacao.objects.filter(usuario=request.user, lida=False).count()
+        return Response({'count': count}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path='marcar-lida')
+    def marcar_lida(self, request):
+        notif_id = request.data.get('id')
+        if not notif_id:
+            return Response({'detail': 'id é obrigatório.'}, status=status.HTTP_400_BAD_REQUEST)
+        Notificacao.objects.filter(usuario=request.user, id=notif_id).update(lida=True)
+        return Response({'detail': 'Notificação marcada como lida.'}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path='criar-lembrete-eventos')
+    def criar_lembrete_eventos(self, request):
+        agora = timezone.now()
+        from datetime import timedelta
+        inicio = agora + timedelta(hours=23)
+        fim = agora + timedelta(hours=25)
+        eventos = Evento.objects.filter(data__gte=inicio, data__lte=fim)
+        criadas = 0
+        for evento in eventos:
+            ja_tem = Notificacao.objects.filter(
+                usuario=request.user,
+                tipo='evento',
+                mensagem__contains=evento.titulo,
+                created_at__date=agora.date(),
+            ).exists()
+            if not ja_tem:
+                hora = evento.data.astimezone(timezone.get_current_timezone()).strftime('%H:%M')
+                Notificacao.objects.create(
+                    usuario=request.user,
+                    titulo='Lembrete de Evento!',
+                    mensagem=f'Amanhã: {evento.titulo} às {hora}',
+                    tipo='evento',
+                    link='/eventos',
+                )
+                criadas += 1
+        return Response({'criadas': criadas}, status=status.HTTP_200_OK)
 
 
 from django.http import JsonResponse, HttpResponse
@@ -844,12 +926,29 @@ from reportlab.lib.enums import TA_CENTER
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def cursos_recomendados(request):
+    from django.db.models import Prefetch
     ambiente_id = request.query_params.get('ambiente')
+    user = request.user if request.user.is_authenticated else None
     qs = Curso.objects.filter(is_recomendado=True, status='publicado')
     if ambiente_id:
         qs = qs.filter(Q(ambiente_id=ambiente_id) | Q(academias_extras__id=ambiente_id))
+    if user:
+        qs = qs.prefetch_related(
+            Prefetch(
+                'matriculas',
+                queryset=Matricula.objects.filter(usuario=user),
+                to_attr='_matricula_usuario'
+            )
+        )
+    else:
+        qs = qs.prefetch_related(
+            Prefetch(
+                'matriculas',
+                queryset=Matricula.objects.none(),
+                to_attr='_matricula_usuario'
+            )
+        )
     qs = qs.distinct()[:5]
-    user = request.user if request.user.is_authenticated else None
     serializer = CursoSerializer(qs, many=True, context={'request': request})
     return Response(serializer.data)
 
@@ -1030,13 +1129,23 @@ def download_certificado(request, pk):
 def user_stats(request):
     user = request.user
     now = timezone.now()
+    academia = request.query_params.get('academia')
 
-    total_minutos = Matricula.objects.filter(usuario=user).aggregate(
-        total=models.Sum('ultimo_segundo_assistido')
+    matriculas_qs = Matricula.objects.filter(usuario=user)
+    if academia:
+        matriculas_qs = matriculas_qs.filter(curso__ambiente__nome=academia)
+
+    total_segundos = matriculas_qs.aggregate(
+        total=models.Sum('tempo_total_assistido')
     )['total'] or 0
-    horas_estudo = round(total_minutos / 3600, 1) if total_minutos else 0
+    horas_estudo = round(total_segundos / 3600, 1) if total_segundos else 0
 
     total_certificados = Certificado.objects.filter(matricula__usuario=user).count()
+    total_concluidos = Matricula.objects.filter(usuario=user, concluido=True).count()
+    if academia:
+        total_concluidos = Matricula.objects.filter(usuario=user, concluido=True, curso__ambiente__nome=academia).count()
+
+    total_meta_segundos = total_segundos
 
     today = now.date()
     inicio_semana = today - timedelta(days=today.weekday())
@@ -1049,6 +1158,10 @@ def user_stats(request):
 
     meta_data = None
     if meta:
+        horas_concluidas_calc = round((total_meta_segundos - meta.baseline_tempo) / 3600, 1)
+        if horas_concluidas_calc != meta.horas_concluidas:
+            MetaSemanal.objects.filter(pk=meta.pk).update(horas_concluidas=horas_concluidas_calc)
+            meta.refresh_from_db()
         meta_data = {
             'titulo': meta.titulo,
             'meta_horas': meta.meta_horas,
@@ -1059,6 +1172,7 @@ def user_stats(request):
     return Response({
         'horas_estudo': horas_estudo,
         'total_certificados': total_certificados,
+        'total_concluidos': total_concluidos,
         'meta_semanal': meta_data,
     })
 

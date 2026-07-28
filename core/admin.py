@@ -856,7 +856,7 @@ class EventoAdmin(admin.ModelAdmin):
     list_filter = ('data',)
     search_fields = ('titulo',)
     date_hierarchy = 'data'
-    fields = ('titulo', 'descricao', 'imagem', 'data', 'local', 'capacidade')
+    fields = ('titulo', 'descricao', 'imagem', 'data', 'local', 'capacidade', 'url')
 
 
 @admin.register(Novidade)
