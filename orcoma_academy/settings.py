@@ -212,8 +212,17 @@ else:
         'https://orcoma-academy.vercel.app',
         'https://orc-academy.vercel.app',
         'https://academy.orcomacontabilidade.com.br',
+        'https://dashboard.orcomacontabilidade.com.br',
     ]
 CORS_ALLOW_CREDENTIALS = True
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://academy.orcoma.com.br',
+    'https://orcoma-academy.vercel.app',
+    'https://orc-academy.vercel.app',
+    'https://academy.orcomacontabilidade.com.br',
+    'https://dashboard.orcomacontabilidade.com.br',
+]
 
 # REST Framework
 REST_FRAMEWORK = {
