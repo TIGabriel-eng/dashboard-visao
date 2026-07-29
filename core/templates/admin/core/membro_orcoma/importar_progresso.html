@@ -1,0 +1,298 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <style>
+    #progress-container {
+      max-width: 900px;
+      margin: 20px auto;
+      background: var(--bg-card, #122a4a);
+      border: 1px solid var(--border-color, #1e3350);
+      border-radius: var(--radius-lg, 16px);
+      overflow: hidden;
+    }
+    #progress-container .progress-header {
+      background: linear-gradient(135deg, #1a3d6e 0%, #2563eb 100%);
+      color: #fff;
+      padding: 24px 32px;
+    }
+    #progress-container .progress-header h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 600;
+      font-family: var(--font-display, 'Sora', sans-serif);
+    }
+    #progress-container .progress-body {
+      padding: 32px;
+    }
+
+    .progress-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .progress-stat {
+      background: var(--bg-surface, #0f1f3a);
+      border: 1px solid var(--border-color, #1e3350);
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+    }
+    .progress-stat__value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text-primary);
+      font-family: var(--font-display);
+    }
+    .progress-stat__label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    .progress-bar-container {
+      background: var(--bg-surface, #0f1f3a);
+      border: 1px solid var(--border-color, #1e3350);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+    .progress-bar {
+      width: 100%;
+      height: 32px;
+      background: var(--bg-surface, #0f1f3a);
+      border: 1px solid var(--border-color, #1e3350);
+      border-radius: 6px;
+      overflow: hidden;
+      position: relative;
+    }
+    .progress-bar__fill {
+      height: 100%;
+      background: linear-gradient(90deg, #2563eb, #10b981);
+      transition: width 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 600;
+      font-size: 12px;
+    }
+    .progress-bar__text {
+      text-align: center;
+      margin-top: 8px;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .usuarios-cadastrados {
+      background: var(--bg-surface, #0f1f3a);
+      border: 1px solid var(--border-color, #1e3350);
+      border-radius: 8px;
+      padding: 20px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .usuarios-cadastrados__title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .usuario-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      background: var(--bg-card, #122a4a);
+      border: 1px solid var(--border-color, #1e3350);
+      border-radius: 6px;
+      margin-bottom: 6px;
+      font-size: 13px;
+      animation: slideIn 0.3s ease;
+    }
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+    .usuario-item__icon {
+      color: #10b981;
+      font-size: 16px;
+    }
+    .usuario-item__info {
+      flex: 1;
+    }
+    .usuario-item__username {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+    .usuario-item__email {
+      color: var(--text-secondary);
+      font-size: 11px;
+    }
+
+    .spinner-large {
+      text-align: center;
+      padding: 40px;
+      font-size: 64px;
+      color: #2563eb;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+    }
+    .empty-state i {
+      font-size: 48px;
+      margin-bottom: 12px;
+      opacity: 0.3;
+    }
+  </style>
+{% endblock %}
+
+{% block content_title %}
+  <a href="{% url 'admin:core_membroorcoma_changelist' %}" class="back-link">
+    <i class="fa-solid fa-arrow-left"></i> Voltar para Gestão de Usuários
+  </a>
+{% endblock %}
+
+{% block content %}
+<div id="progress-container">
+  <div class="progress-header">
+    <h1><i class="fa-solid fa-gear fa-spin"></i> Importando Usuários...</h1>
+  </div>
+  
+  <div class="progress-body">
+    <div class="progress-stats">
+      <div class="progress-stat">
+        <div class="progress-stat__value" id="totalCount">0</div>
+        <div class="progress-stat__label">Total de Usuários</div>
+      </div>
+      <div class="progress-stat">
+        <div class="progress-stat__value" id="processedCount" style="color: #2563eb;">0</div>
+        <div class="progress-stat__label">Processados</div>
+      </div>
+      <div class="progress-stat">
+        <div class="progress-stat__value" id="successCount" style="color: #10b981;">0</div>
+        <div class="progress-stat__label">Cadastrados</div>
+      </div>
+      <div class="progress-stat">
+        <div class="progress-stat__value" id="errorCount" style="color: #ef4444;">0</div>
+        <div class="progress-stat__label">Erros</div>
+      </div>
+    </div>
+
+    <div class="progress-bar-container">
+      <div class="progress-bar">
+        <div class="progress-bar__fill" id="progressBar" style="width: 0%;">
+          <span id="progressPercent">0%</span>
+        </div>
+      </div>
+      <div class="progress-bar__text" id="progressText">
+        Iniciando importação...
+      </div>
+    </div>
+
+    <div class="usuarios-cadastrados">
+      <div class="usuarios-cadastrados__title">
+        <i class="fa-solid fa-user-check"></i>
+        Usuários Cadastrados em Tempo Real
+      </div>
+      <div id="usuariosList">
+        <div class="empty-state">
+          <i class="fa-solid fa-hourglass-start"></i>
+          <p>Aguardando início da importação...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  var importId = '{{ import_id }}';
+  var totalUsuarios = {{ total_usuarios }};
+  var checkInterval = null;
+
+  function atualizarProgresso() {
+    fetch('{% url "admin:core_membroorcoma_importar_progresso" %}?import_id=' + importId)
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === 'processing') {
+          // Atualiza estatísticas
+          document.getElementById('totalCount').textContent = data.total;
+          document.getElementById('processedCount').textContent = data.processados;
+          document.getElementById('successCount').textContent = data.sucessos;
+          document.getElementById('errorCount').textContent = data.erros;
+
+          // Atualiza barra de progresso
+          var percentual = data.total > 0 ? Math.round((data.processados / data.total) * 100) : 0;
+          document.getElementById('progressBar').style.width = percentual + '%';
+          document.getElementById('progressPercent').textContent = percentual + '%';
+          document.getElementById('progressText').textContent = 
+            'Processando: ' + data.processados + ' de ' + data.total + ' usuários...';
+
+          // Adiciona novos usuários à lista
+          if (data.novos_usuarios && data.novos_usuarios.length > 0) {
+            var lista = document.getElementById('usuariosList');
+            
+            // Remove empty state se existir
+            var emptyState = lista.querySelector('.empty-state');
+            if (emptyState) {
+              emptyState.remove();
+            }
+
+            // Adiciona cada novo usuário
+            data.novos_usuarios.forEach(function(usuario) {
+              var item = document.createElement('div');
+              item.className = 'usuario-item';
+              item.innerHTML = `
+                <div class="usuario-item__icon">
+                  <i class="fa-solid fa-check-circle"></i>
+                </div>
+                <div class="usuario-item__info">
+                  <div class="usuario-item__username">${usuario.username}</div>
+                  <div class="usuario-item__email">${usuario.email}</div>
+                </div>
+              `;
+              lista.insertBefore(item, lista.firstChild);
+            });
+          }
+        } else if (data.status === 'completed') {
+          // Importação concluída
+          clearInterval(checkInterval);
+          window.location.href = '{% url "admin:core_membroorcoma_changelist" %}';
+        } else if (data.status === 'error') {
+          // Erro na importação
+          clearInterval(checkInterval);
+          document.getElementById('progressText').textContent = 'Erro: ' + data.error;
+          document.getElementById('progressBar').style.background = '#ef4444';
+        }
+      })
+      .catch(error => {
+        console.error('Erro ao verificar progresso:', error);
+      });
+  }
+
+  // Inicia o polling a cada 1 segundo
+  checkInterval = setInterval(atualizarProgresso, 1000);
+
+  // Primeira verificação imediata
+  atualizarProgresso();
+</script>
+{% endblock %}

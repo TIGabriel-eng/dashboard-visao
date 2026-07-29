@@ -1,3 +1,5 @@
+import threading
+
 from django.contrib import admin, messages
 from django.contrib.auth.models import User, Group, Permission
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin, GroupAdmin
@@ -492,19 +494,34 @@ class MembroOrcomaAdmin(BaseUserAdmin):
 
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}
+        from django.db.models import Q
 
-        staff_users = User.objects.filter(
+        search_query = request.GET.get('q', '').strip()
+
+        def search_filter(qs):
+            if not search_query:
+                return qs
+            return qs.filter(
+                Q(first_name__icontains=search_query) |
+                Q(last_name__icontains=search_query) |
+                Q(email__icontains=search_query) |
+                Q(username__icontains=search_query) |
+                Q(perfil__empresa__icontains=search_query)
+            )
+
+        staff_users = search_filter(User.objects.filter(
             perfil__role__in=STAFF_ROLES,
             is_active=True,
-        ).select_related('perfil').order_by('-date_joined')
+        ).select_related('perfil').order_by('-date_joined'))
 
-        client_users = User.objects.filter(
+        client_users = search_filter(User.objects.filter(
             perfil__role__in=CLIENT_ROLES,
             is_active=True,
-        ).select_related('perfil').order_by('-date_joined')
+        ).select_related('perfil').order_by('-date_joined'))
 
         extra_context['staff_users'] = staff_users
         extra_context['client_users'] = client_users
+        extra_context['search_query'] = search_query
         extra_context['stats'] = {
             'total_staff': staff_users.count(),
             'total_clients': client_users.count(),
@@ -588,9 +605,15 @@ class MembroOrcomaAdmin(BaseUserAdmin):
             path('<int:pk>/delete_cliente/',
                  self.admin_site.admin_view(self.delete_cliente_view),
                  name='core_membroorcoma_delete_cliente'),
+            path('excluir-massa/',
+                 self.admin_site.admin_view(self.excluir_massa_view),
+                 name='core_membroorcoma_excluir_massa'),
             path('importar/',
                  self.admin_site.admin_view(self.importar_usuarios_view),
                  name='core_membroorcoma_importar'),
+            path('importar/progresso/',
+                 self.admin_site.admin_view(self.importar_progresso_api),
+                 name='core_membroorcoma_importar_progresso'),
             path('importar/template/',
                  self.admin_site.admin_view(self.baixar_template_view),
                  name='core_membroorcoma_baixar_template'),
@@ -652,20 +675,35 @@ class MembroOrcomaAdmin(BaseUserAdmin):
             list(self.fieldsets),
             self.get_prepopulated_fields(request),
             readonly_fields=self.get_readonly_fields(request, user_obj),
-            model=self.model,
         )
         inline_instances = self.get_inline_instances(request, user_obj)
         inline_admin_formsets = []
         for inline in inline_instances:
-            fieldset = inline.get_fieldsets(request, user_obj)
-            formset = inline.get_formset(request, user_obj)
+            fieldsets = inline.get_fieldsets(request, user_obj)
+            FormSet = inline.get_formset(request, user_obj)
+            prefix = FormSet.get_default_prefix()
+            formset = FormSet(
+                instance=user_obj,
+                prefix=prefix,
+                queryset=inline.get_queryset(request),
+            )
             inline_admin_formsets.append(
-                admin.helpers.InlineAdminForm(inline, formset, fieldset, request.user)
+                admin.helpers.InlineAdminFormSet(
+                    inline,
+                    formset,
+                    fieldsets,
+                    model_admin=self,
+                    has_add_permission=inline.has_add_permission(request, user_obj),
+                    has_change_permission=inline.has_change_permission(request, user_obj),
+                    has_delete_permission=inline.has_delete_permission(request, user_obj),
+                    has_view_permission=inline.has_view_permission(request, user_obj),
+                )
             )
         context = {
             **self.admin_site.each_context(request),
             'title': f'Editar Cliente: {user_obj.get_full_name() or user_obj.username}',
             'subtitle': None,
+            'form': form,
             'adminform': admin_form,
             'object_id': pk,
             'original': user_obj,
@@ -687,11 +725,54 @@ class MembroOrcomaAdmin(BaseUserAdmin):
         return render(request, 'admin/core/cliente/change_form.html', context)
 
     def delete_cliente_view(self, request, pk):
+        from django.db import transaction
+        from core.models import (
+            Matricula, Certificado, FormacaoAcademica, Habilidade,
+            MetaSemanal, LogAtividade, Notificacao, CursoVisualizacao,
+            Avaliacao, Perfil
+        )
+        
         user_obj = get_object_or_404(User, pk=pk)
+        
         if request.method == 'POST':
-            user_obj.delete()
-            self.message_user(request, f'Cliente "{user_obj.get_full_name() or user_obj.username}" excluído com sucesso.')
-            return HttpResponseRedirect(reverse('admin:core_membroorcoma_changelist'))
+            try:
+                with transaction.atomic():
+                    # Deleta todos os registros relacionados manualmente para evitar erros de FK
+                    matriculas = Matricula.objects.filter(usuario=user_obj)
+                    for matricula in matriculas:
+                        # Deleta certificados primeiro (dependem de matrícula)
+                        Certificado.objects.filter(matricula=matricula).delete()
+                    
+                    # Deleta todos os outros relacionamentos
+                    Matricula.objects.filter(usuario=user_obj).delete()
+                    FormacaoAcademica.objects.filter(usuario=user_obj).delete()
+                    Habilidade.objects.filter(usuario=user_obj).delete()
+                    MetaSemanal.objects.filter(usuario=user_obj).delete()
+                    LogAtividade.objects.filter(usuario=user_obj).delete()
+                    Notificacao.objects.filter(usuario=user_obj).delete()
+                    CursoVisualizacao.objects.filter(usuario=user_obj).delete()
+                    Avaliacao.objects.filter(usuario=user_obj).delete()
+                    Perfil.objects.filter(usuario=user_obj).delete()
+                    
+                    # Finalmente deleta o usuário
+                    username = user_obj.get_full_name() or user_obj.username
+                    user_obj.delete()
+                    
+                    self.message_user(
+                        request, 
+                        f'Cliente "{username}" excluído com sucesso.',
+                        messages.SUCCESS
+                    )
+                    return HttpResponseRedirect(reverse('admin:core_membroorcoma_changelist'))
+            except Exception as e:
+                self.message_user(
+                    request, 
+                    f'Erro ao excluir cliente: {str(e)}',
+                    messages.ERROR
+                )
+                return HttpResponseRedirect(reverse('admin:core_membroorcoma_changelist'))
+        
+        # Conta registros relacionados para mostrar no template
         context = {
             **self.admin_site.each_context(request),
             'title': f'Excluir Cliente: {user_obj.get_full_name() or user_obj.username}',
@@ -704,34 +785,75 @@ class MembroOrcomaAdmin(BaseUserAdmin):
         return render(request, 'admin/core/cliente/delete_confirm.html', context)
 
     def importar_usuarios_view(self, request):
-        if request.method == 'POST':
-            form = ImportarUsuariosForm(request.POST, request.FILES)
-            if form.is_valid():
-                arquivo = request.FILES['arquivo']
-                resultado, erro = processar_arquivo_excel(arquivo)
-                if erro:
-                    for campo, msg in erro.items():
-                        self.message_user(request, msg, level=messages.ERROR)
-                    return HttpResponseRedirect(reverse('admin:core_membroorcoma_importar'))
+        try:
+            if request.method == 'POST':
+                form = ImportarUsuariosForm(request.POST, request.FILES)
+                if form.is_valid():
+                    arquivo = request.FILES['arquivo']
+                    arquivo.seek(0)
 
-                request.session['relatorio_importacao'] = resultado['usuarios']
-                request.session['relatorio_timestamp'] = resultado.get('timestamp', '')
+                    from core.services.importacao import processar_arquivo_excel
+                    resultado, erro = processar_arquivo_excel(arquivo, criar_usuarios=True)
 
-                return render(request, 'admin/core/membro_orcoma/importar_resultado.html', {
-                    **self.admin_site.each_context(request),
-                    'title': 'Resultado da Importação',
-                    'resultado': resultado,
-                    'opts': self.model._meta,
-                })
-        else:
+                    if erro:
+                        for campo, msg in erro.items():
+                            self.message_user(request, msg, level=messages.ERROR)
+                        return HttpResponseRedirect(reverse('admin:core_membroorcoma_importar'))
+
+                    s = resultado['sucessos']
+                    e = resultado['total_erros']
+                    if s:
+                        self.message_user(
+                            request,
+                            f'{s} cliente(s) cadastrado(s) com sucesso.'
+                            + (f' {e} erro(s) ignorado(s).' if e else ''),
+                            level=messages.SUCCESS if e == 0 else messages.WARNING,
+                        )
+                    else:
+                        self.message_user(
+                            request,
+                            'Nenhum cliente foi cadastrado. Verifique se os dados estão corretos.',
+                            level=messages.WARNING,
+                        )
+
+                    if resultado['erros']:
+                        for err in resultado['erros'][:20]:
+                            self.message_user(
+                                request,
+                                f"Linha {err.get('linha','?')}: {err.get('username','?')} - {err.get('motivo','')}",
+                                level=messages.WARNING,
+                            )
+                        if len(resultado['erros']) > 20:
+                            self.message_user(request, f"... e mais {len(resultado['erros'])-20} erro(s).", messages.WARNING)
+
+                    return HttpResponseRedirect(reverse('admin:core_membroorcoma_changelist'))
+            else:
+                form = ImportarUsuariosForm()
+
+            return render(request, 'admin/core/membro_orcoma/importar_usuarios.html', {
+                **self.admin_site.each_context(request),
+                'title': 'Importar Usuários',
+                'form': form,
+                'opts': self.model._meta,
+            })
+        except Exception as e:
+            import traceback
+            error_detail = traceback.format_exc()
+            self.message_user(
+                request,
+                f'Erro ao processar importação: {str(e)}',
+                level=messages.ERROR
+            )
+            print(f"ERRO NA IMPORTAÇÃO: {error_detail}")
+
             form = ImportarUsuariosForm()
-
-        return render(request, 'admin/core/membro_orcoma/importar_usuarios.html', {
-            **self.admin_site.each_context(request),
-            'title': 'Importar Usuários',
-            'form': form,
-            'opts': self.model._meta,
-        })
+            return render(request, 'admin/core/membro_orcoma/importar_usuarios.html', {
+                **self.admin_site.each_context(request),
+                'title': 'Importar Usuários',
+                'form': form,
+                'opts': self.model._meta,
+                'error_detail': str(e),
+            })
 
     def baixar_template_view(self, request):
         from django.http import HttpResponse
@@ -759,6 +881,97 @@ class MembroOrcomaAdmin(BaseUserAdmin):
         )
         response['Content-Disposition'] = 'attachment; filename="relatorio_usuarios_cadastrados.xlsx"'
         return response
+
+    def importar_progresso_api(self, request):
+        """API endpoint para retornar o progresso da importação em tempo real"""
+        from django.http import JsonResponse
+        from core.services.progresso_importacao import obter_progresso
+        
+        import_id = request.GET.get('import_id')
+        if not import_id:
+            return JsonResponse({'status': 'error', 'message': 'import_id não fornecido'})
+        
+        dados = obter_progresso(import_id)
+        if not dados:
+            return JsonResponse({'status': 'error', 'message': 'Importação não encontrada'})
+        
+        return JsonResponse(dados)
+
+    def excluir_massa_view(self, request):
+        from django.db import transaction
+        from django.http import HttpResponseRedirect
+        from core.models import (
+            Matricula, Certificado, FormacaoAcademica, Habilidade,
+            MetaSemanal, LogAtividade, Notificacao, CursoVisualizacao,
+            Avaliacao, Perfil
+        )
+        
+        if request.method == 'POST':
+            usuarios_ids = request.POST.getlist('usuarios_ids')
+            
+            if not usuarios_ids:
+                self.message_user(request, 'Nenhum usuário selecionado.', level=messages.WARNING)
+                return HttpResponseRedirect(reverse('admin:core_membroorcoma_changelist'))
+            
+            try:
+                with transaction.atomic():
+                    usuarios = User.objects.filter(pk__in=usuarios_ids)
+                    total_excluidos = usuarios.count()
+                    
+                    # Coleta todos os IDs de usuários para filtrar
+                    usuarios_ids_list = list(usuarios.values_list('id', flat=True))
+                    
+                    # Deleta em lote, na ordem correta, para evitar erros de FK
+                    # 1. Certificados (dependem de matrículas)
+                    matriculas_ids = Matricula.objects.filter(usuario_id__in=usuarios_ids_list).values_list('id', flat=True)
+                    Certificado.objects.filter(matricula_id__in=matriculas_ids).delete()
+                    
+                    # 2. Demais registros relacionados (todos de uma vez)
+                    Matricula.objects.filter(usuario_id__in=usuarios_ids_list).delete()
+                    FormacaoAcademica.objects.filter(usuario_id__in=usuarios_ids_list).delete()
+                    Habilidade.objects.filter(usuario_id__in=usuarios_ids_list).delete()
+                    MetaSemanal.objects.filter(usuario_id__in=usuarios_ids_list).delete()
+                    LogAtividade.objects.filter(usuario_id__in=usuarios_ids_list).delete()
+                    Notificacao.objects.filter(usuario_id__in=usuarios_ids_list).delete()
+                    CursoVisualizacao.objects.filter(usuario_id__in=usuarios_ids_list).delete()
+                    Avaliacao.objects.filter(usuario_id__in=usuarios_ids_list).delete()
+                    Perfil.objects.filter(usuario_id__in=usuarios_ids_list).delete()
+                    
+                    # 3. Finalmente deleta os usuários
+                    usuarios.delete()
+                    
+                    self.message_user(
+                        request,
+                        f'{total_excluidos} usuário(s) excluído(s) com sucesso.',
+                        messages.SUCCESS
+                    )
+                    return HttpResponseRedirect(reverse('admin:core_membroorcoma_changelist'))
+                    
+            except Exception as e:
+                self.message_user(
+                    request,
+                    f'Erro ao excluir usuários: {str(e)}',
+                    messages.ERROR
+                )
+                return HttpResponseRedirect(reverse('admin:core_membroorcoma_changelist'))
+        
+        # GET request - mostra a página de confirmação
+        usuarios_ids = request.GET.getlist('usuarios_ids')
+        
+        if not usuarios_ids:
+            self.message_user(request, 'Nenhum usuário selecionado.', level=messages.WARNING)
+            return HttpResponseRedirect(reverse('admin:core_membroorcoma_changelist'))
+        
+        usuarios = User.objects.filter(pk__in=usuarios_ids).select_related('perfil')
+        
+        context = {
+            **self.admin_site.each_context(request),
+            'title': 'Excluir Clientes em Massa',
+            'usuarios': usuarios,
+            'opts': self.model._meta,
+            'app_label': self.model._meta.app_label,
+        }
+        return render(request, 'admin/core/membro_orcoma/excluir_massa.html', context)
 
 
 class VideoInline(admin.StackedInline):

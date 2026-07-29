@@ -204,6 +204,12 @@
 
   <div class="import-body">
 
+    {% if error_detail %}
+    <div class="alert alert-error" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 16px 20px; margin-bottom: 20px; color: #fca5a5;">
+      <strong><i class="fa-solid fa-circle-exclamation"></i> Erro:</strong> {{ error_detail }}
+    </div>
+    {% endif %}
+
     <div class="template-info">
       <p><strong>Passo 1:</strong> Baixe o template Excel para ver o formato esperado.</p>
       <p><strong>Passo 2:</strong> Preencha os dados dos usuários na planilha.</p>
@@ -235,7 +241,7 @@
 
     <div class="import-section">
       <div class="import-section__title">Upload</div>
-      <form method="post" enctype="multipart/form-data">
+      <form method="post" enctype="multipart/form-data" id="importForm">
         {% csrf_token %}
         <div class="form-row">
           <label for="{{ form.arquivo.id_for_label }}">{{ form.arquivo.label }}</label>
@@ -249,11 +255,36 @@
             {% endfor %}
           {% endif %}
         </div>
-        <button type="submit" class="import-btn">
+        <button type="submit" class="import-btn" id="importBtn">
           <i class="fa-solid fa-upload"></i> Importar Usuários
         </button>
       </form>
+      
+      <div id="loadingIndicator" style="display: none; margin-top: 20px; padding: 20px; background: rgba(37, 99, 235, 0.1); border: 1px solid rgba(37, 99, 235, 0.3); border-radius: 8px; text-align: center;">
+        <div style="font-size: 48px; color: #2563eb; margin-bottom: 12px;">
+          <i class="fa-solid fa-spinner fa-spin"></i>
+        </div>
+        <p style="color: #93c5fd; font-size: 14px; font-weight: 600; margin: 0 0 8px;">
+          Processando arquivo...
+        </p>
+        <p style="color: #60a5fa; font-size: 12px; margin: 0;">
+          Isso pode levar alguns segundos dependendo do tamanho do arquivo.
+        </p>
+        <p style="color: #60a5fa; font-size: 11px; margin: 8px 0 0; font-style: italic;">
+          Por favor, não feche esta página.
+        </p>
+      </div>
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extrajs %}
+  <script>
+    // Mostra indicador de carregamento ao enviar o formulário
+    document.getElementById('importForm').addEventListener('submit', function() {
+      document.getElementById('importBtn').disabled = true;
+      document.getElementById('loadingIndicator').style.display = 'block';
+    });
+  </script>
 {% endblock %}

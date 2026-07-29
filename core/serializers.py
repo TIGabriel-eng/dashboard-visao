@@ -352,7 +352,7 @@ class PerfilSerializer(serializers.ModelSerializer):
 
 
 class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, min_length=8)
+    password = serializers.CharField(write_only=True, min_length=6)
     first_name = serializers.CharField(required=True)
     last_name = serializers.CharField(required=True)
     email = serializers.EmailField(required=True)
@@ -360,6 +360,13 @@ class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('username', 'email', 'password', 'first_name', 'last_name')
+
+    def validate_username(self, value):
+        """Se o username já existir, gera um único automaticamente."""
+        if User.objects.filter(username=value).exists():
+            import uuid
+            return f'user_{uuid.uuid4().hex[:8]}'
+        return value
 
     def create(self, validated_data):
         password = validated_data.pop('password')
@@ -388,6 +395,8 @@ class HabilidadeSerializer(serializers.ModelSerializer):
 
 class MeSerializer(serializers.ModelSerializer):
     perfil = PerfilSerializer(read_only=True)
+    cpf = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    cnpj = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     nome = serializers.SerializerMethodField()
     role = serializers.SerializerMethodField()
     plano_nome = serializers.SerializerMethodField()
@@ -395,7 +404,8 @@ class MeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'nome', 'role', 'perfil', 'plano_nome', 'avatar_url', 'date_joined')
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'nome', 'role', 'perfil', 'cpf', 'cnpj', 'plano_nome', 'avatar_url', 'date_joined')
+        read_only_fields = ('username', 'email')
 
     def get_nome(self, obj):
         return obj.get_full_name() or obj.username
@@ -417,6 +427,31 @@ class MeSerializer(serializers.ModelSerializer):
         if perfil and perfil.avatar:
             return perfil.avatar.url
         return ''
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        perfil_obj = getattr(instance, 'perfil', None)
+        if perfil_obj:
+            data['cpf'] = perfil_obj.cpf or ''
+            data['cnpj'] = perfil_obj.cnpj or ''
+        else:
+            data['cpf'] = ''
+            data['cnpj'] = ''
+        return data
+
+    def update(self, instance, validated_data):
+        # Atualiza campos do User (first_name, last_name)
+        instance.first_name = validated_data.get('first_name', instance.first_name)
+        instance.last_name = validated_data.get('last_name', instance.last_name)
+        instance.save()
+        # Atualiza campos do Perfil (cpf, cnpj) - vêm como chaves soltas no validated_data
+        perfil_obj = instance.perfil
+        if 'cpf' in validated_data:
+            perfil_obj.cpf = validated_data['cpf'] or ''
+        if 'cnpj' in validated_data:
+            perfil_obj.cnpj = validated_data['cnpj'] or ''
+        perfil_obj.save()
+        return instance
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):

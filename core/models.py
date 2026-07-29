@@ -490,6 +490,7 @@ class Perfil(models.Model):
     empresa = models.CharField(max_length=200, blank=True, verbose_name='Empresa')
     unidade = models.CharField(max_length=30, choices=UNIDADE_CHOICES, blank=True, verbose_name='Unidade')
     is_empresario = models.BooleanField(default=False, verbose_name='É Empresário?')
+    cpf = models.CharField(max_length=14, blank=True, verbose_name='CPF')
     cnpj = models.CharField(max_length=18, blank=True, verbose_name='CNPJ da Empresa')
     regime_federal = models.CharField(max_length=10, choices=REGIME_FEDERAL_CHOICES, blank=True, verbose_name='Regime Federal')
     telefone = models.CharField(max_length=20, blank=True, verbose_name='Telefone Corporativo')

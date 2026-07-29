@@ -27,10 +27,10 @@ def validar_role(role):
     return role
 
 
-def processar_arquivo_excel(arquivo, planilha_nome='Sheet1'):
+def processar_arquivo_excel(arquivo, planilha_nome='Sheet1', criar_usuarios=False, progress_callback=None):
     import openpyxl
 
-    wb = openpyxl.load_workbook(arquivo)
+    wb = openpyxl.load_workbook(arquivo, data_only=True)
     ws = wb[planilha_nome] if planilha_nome in wb.sheetnames else wb.active
 
     headers = [cell.value for cell in ws[1]]
@@ -50,11 +50,27 @@ def processar_arquivo_excel(arquivo, planilha_nome='Sheet1'):
 
     usuarios_criados = []
     erros = []
+    usuarios_bulk = []
+    perfis_bulk = []
+    MAX_BULK_SIZE = 500
+
+    existing_usernames = set()
+    for username in User.objects.values_list('username', flat=True):
+        existing_usernames.add(username)
+
+    usernames_da_planilha = set()
+
+    total_linhas = ws.max_row - 1
+    linhas_processadas = 0
 
     for idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
         linha_vazia = all(cell is None for cell in row)
         if linha_vazia:
             continue
+
+        linhas_processadas += 1
+        if linhas_processadas % 100 == 0:
+            print(f"Processando linha {linhas_processadas}/{total_linhas}...")
 
         try:
             username = row[col_map['username']]
@@ -78,9 +94,14 @@ def processar_arquivo_excel(arquivo, planilha_nome='Sheet1'):
                 erros.append({'linha': idx, 'username': str(username or ''), 'motivo': 'username ou email vazio.'})
                 continue
 
-            if User.objects.filter(username=username).exists():
+            if username in existing_usernames:
                 erros.append({'linha': idx, 'username': username, 'motivo': 'Usuário já existe.'})
                 continue
+
+            if username in usernames_da_planilha:
+                erros.append({'linha': idx, 'username': username, 'motivo': 'Username duplicado na planilha.'})
+                continue
+            usernames_da_planilha.add(username)
 
             role_valida = validar_role(role)
             if not role_valida:
@@ -89,24 +110,28 @@ def processar_arquivo_excel(arquivo, planilha_nome='Sheet1'):
 
             senha = gerar_senha(first_name or username, last_name or 'user')
 
-            user = User.objects.create_user(
+            user = User(
                 username=username,
                 email=email,
-                password=senha,
                 first_name=first_name,
                 last_name=last_name,
             )
+            user._senha = senha
 
-            perfil = user.perfil
-            perfil.role = role_valida
-            perfil.empresa = empresa
-            perfil.cnpj = cnpj
-            perfil.telefone = telefone
-            perfil.cargo = cargo
-            perfil.unidade = unidade
-            perfil.regime_federal = regime_federal
-            perfil.is_empresario = is_empresario
-            perfil.save()
+            perfil = Perfil(
+                usuario=user,
+                role=role_valida,
+                empresa=empresa,
+                cnpj=cnpj,
+                telefone=telefone,
+                cargo=cargo,
+                unidade=unidade,
+                regime_federal=regime_federal,
+                is_empresario=is_empresario,
+            )
+
+            usuarios_bulk.append(user)
+            perfis_bulk.append(perfil)
 
             usuarios_criados.append({
                 'username': username,
@@ -120,13 +145,61 @@ def processar_arquivo_excel(arquivo, planilha_nome='Sheet1'):
         except Exception as e:
             erros.append({'linha': idx, 'username': str(row[col_map.get('username', 0)] or '?') if col_map.get('username') is not None else '?', 'motivo': str(e)})
 
+    criados_db = 0
+    processados_acumulado = 0
+
+    if criar_usuarios and usuarios_bulk:
+        from django.contrib.auth.hashers import make_password
+
+        for i in range(0, len(usuarios_bulk), MAX_BULK_SIZE):
+            batch_users = usuarios_bulk[i:i + MAX_BULK_SIZE]
+            batch_perfis = perfis_bulk[i:i + MAX_BULK_SIZE]
+            batch_num = i // MAX_BULK_SIZE + 1
+
+            try:
+                print(f"  Batch {batch_num} - hashing senhas...")
+                for user in batch_users:
+                    user.password = make_password(user._senha, hasher='md5')
+
+                usernames_do_batch = [u.username for u in batch_users]
+
+                print(f"  Batch {batch_num} - salvando...")
+                User.objects.bulk_create(batch_users)
+
+                users_criados = User.objects.filter(
+                    username__in=usernames_do_batch
+                ).in_bulk(field_name='username')
+
+                perfis_com_fk = []
+                for p in batch_perfis:
+                    user_criado = users_criados.get(p.usuario.username)
+                    if user_criado:
+                        p.usuario = user_criado
+                        perfis_com_fk.append(p)
+
+                if perfis_com_fk:
+                    Perfil.objects.bulk_create(perfis_com_fk)
+
+                criados_db += len(perfis_com_fk)
+                processados_acumulado += len(batch_users)
+                if progress_callback:
+                    progress_callback(
+                        processados=processados_acumulado,
+                        sucessos=criados_db,
+                        erros=len(erros),
+                    )
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                erros.append({'linha': 'todos', 'username': '-', 'motivo': f'Erro no lote {batch_num}: {str(e)}'})
+
     timestamp = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
 
     return {
         'usuarios': usuarios_criados,
         'erros': erros,
-        'total_processado': len(usuarios_criados) + len(erros),
-        'sucessos': len(usuarios_criados),
+        'total_processado': criados_db + len(erros),
+        'sucessos': criados_db,
         'total_erros': len(erros),
         'timestamp': timestamp,
     }, None

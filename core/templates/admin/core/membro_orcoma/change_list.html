@@ -289,11 +289,17 @@
 
 {% block content %}
 
-  <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+  <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
     <a href="{% url 'admin:core_membroorcoma_importar' %}"
        style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;font-family:var(--font-body,'DM Sans',sans-serif);font-size:13px;font-weight:600;border:none;border-radius:var(--radius-md,8px);text-decoration:none;cursor:pointer;transition:all 0.2s;box-shadow:0 2px 8px rgba(16,185,129,.3);">
       <i class="fa-solid fa-file-import" style="font-size:12px;"></i> Importar Usuários (Excel)
     </a>
+    
+    <button id="btnExcluirMassa" 
+            style="display:none;align-items:center;gap:8px;padding:10px 20px;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;font-family:var(--font-body,'DM Sans',sans-serif);font-size:13px;font-weight:600;border:none;border-radius:var(--radius-md,8px);cursor:pointer;transition:all 0.2s;box-shadow:0 2px 8px rgba(239,68,68,.3);"
+            onclick="excluirSelecionados()">
+      <i class="fa-solid fa-trash-can" style="font-size:12px;"></i> Excluir Selecionados (<span id="countSelected">0</span>)
+    </button>
   </div>
 
   <div class="stats-bar">
@@ -329,16 +335,25 @@
           <h2 class="hero-card__title">Membros Orcoma</h2>
           <p class="hero-card__subtitle">Administradores, gestores e colaboradores da plataforma</p>
         </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="text" id="searchStaff"
+                 placeholder="Filtrar membros..."
+                 style="padding:8px 14px;border:1px solid var(--border-color);border-radius:var(--radius-md,8px);background:var(--bg-surface,#0f1f3a);color:var(--text-primary);font-size:13px;width:220px;outline:none;"
+                 oninput="filtrarTabela('staff', this.value)">
+          <a href="{% url 'admin:core_membroorcoma_add' %}" class="hero-card__add-btn">
+            <i class="fa-solid fa-plus"></i> Adicionar Membro
+          </a>
+        </div>
       </div>
-      <a href="{% url 'admin:core_membroorcoma_add' %}" class="hero-card__add-btn">
-        <i class="fa-solid fa-plus"></i> Adicionar Membro
-      </a>
     </div>
     <div class="hero-card__body">
       {% if staff_users %}
       <table class="hero-card__table">
         <thead>
           <tr>
+            <th style="width: 40px; text-align: center;">
+              <input type="checkbox" id="selectAllStaff" onchange="toggleSelectAll('staff', this.checked)">
+            </th>
             <th>Nome</th>
             <th>Email</th>
             <th>Cargo</th>
@@ -351,6 +366,9 @@
         <tbody>
           {% for u in staff_users %}
           <tr>
+            <td style="text-align: center;">
+              <input type="checkbox" class="user-checkbox" data-type="staff" data-id="{{ u.pk }}" onchange="updateSelectedCount()">
+            </td>
             <td><a href="{% url 'admin:core_membroorcoma_change' u.pk %}" style="color: var(--text-primary); font-weight: 500;">{{ u.get_full_name|default:u.username }}</a></td>
             <td>{{ u.email|default:"-" }}</td>
             <td>{{ u.perfil.cargo|default:"-" }}</td>
@@ -401,16 +419,25 @@
           <h2 class="hero-card__title">Usuários / Clientes</h2>
           <p class="hero-card__subtitle">Clientes e usuários da plataforma</p>
         </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="text" id="searchClient"
+                 placeholder="Filtrar por nome, email..."
+                 style="padding:8px 14px;border:1px solid var(--border-color);border-radius:var(--radius-md,8px);background:var(--bg-surface,#0f1f3a);color:var(--text-primary);font-size:13px;width:280px;outline:none;"
+                 oninput="filtrarTabela('client', this.value)">
+          <a href="{% url 'admin:core_membroorcoma_add_cliente' %}" class="hero-card__add-btn">
+            <i class="fa-solid fa-plus"></i> Adicionar Cliente
+          </a>
+        </div>
       </div>
-      <a href="{% url 'admin:core_membroorcoma_add_cliente' %}" class="hero-card__add-btn">
-        <i class="fa-solid fa-plus"></i> Adicionar Cliente
-      </a>
     </div>
     <div class="hero-card__body">
       {% if client_users %}
       <table class="hero-card__table">
         <thead>
           <tr>
+            <th style="width: 40px; text-align: center;">
+              <input type="checkbox" id="selectAllClient" onchange="toggleSelectAll('client', this.checked)">
+            </th>
             <th>Nome</th>
             <th>Email</th>
             <th>Função</th>
@@ -422,6 +449,9 @@
         <tbody>
           {% for u in client_users %}
           <tr>
+            <td style="text-align: center;">
+              <input type="checkbox" class="user-checkbox" data-type="client" data-id="{{ u.pk }}" onchange="updateSelectedCount()">
+            </td>
             <td><a href="{% url 'admin:core_membroorcoma_change_cliente' u.pk %}" style="color: var(--text-primary); font-weight: 500;">{{ u.get_full_name|default:u.username }}</a></td>
             <td>{{ u.email|default:"-" }}</td>
             <td>
@@ -477,9 +507,106 @@
     </div>
   </div>
 
-{% endblock %}
+  {% endblock %}
 
 {% block extrajs %}
+  <script>
+    var selectedIds = new Set();
+    
+    function toggleSelectAll(type, checked) {
+      var checkboxes = document.querySelectorAll('.user-checkbox[data-type="' + type + '"]');
+      checkboxes.forEach(function(cb) {
+        cb.checked = checked;
+        var id = parseInt(cb.dataset.id);
+        if (checked) {
+          selectedIds.add(id);
+        } else {
+          selectedIds.delete(id);
+        }
+      });
+      updateSelectedCount();
+    }
+    
+    function updateSelectedCount() {
+      selectedIds.clear();
+      var checkboxes = document.querySelectorAll('.user-checkbox:checked');
+      checkboxes.forEach(function(cb) {
+        selectedIds.add(parseInt(cb.dataset.id));
+      });
+      
+      var count = selectedIds.size;
+      var btn = document.getElementById('btnExcluirMassa');
+      var countSpan = document.getElementById('countSelected');
+      
+      if (count > 0) {
+        btn.style.display = 'inline-flex';
+        countSpan.textContent = count;
+      } else {
+        btn.style.display = 'none';
+      }
+    }
+    
+    function filtrarTabela(type, value) {
+      var q = value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      var rows = document.querySelectorAll('.user-checkbox[data-type="' + type + '"]');
+      rows.forEach(function(cb) {
+        var row = cb.closest('tr');
+        var nome = (row.cells[1]?.textContent || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        var email = (row.cells[2]?.textContent || '').toLowerCase();
+        if (!q || nome.includes(q) || email.includes(q)) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+      var params = new URLSearchParams(window.location.search);
+      var q = params.get('q');
+      if (q) {
+        var input = document.querySelector('input[name="q"]');
+        if (input) input.value = q;
+      }
+    });
+
+    function excluirSelecionados() {
+      if (selectedIds.size === 0) {
+        alert('Selecione pelo menos um usuário para excluir.');
+        return;
+      }
+      
+      var confirmMsg = 'Tem certeza que deseja excluir ' + selectedIds.size + ' usuário(s)?\n\nEsta ação é PERMANENTE e não pode ser desfeita.\nTodos os dados relacionados (matrículas, certificados, perfis, etc.) serão excluídos.';
+      
+      if (!confirm(confirmMsg)) {
+        return;
+      }
+      
+      // Cria formulário hidden e submete
+      var form = document.createElement('form');
+      form.method = 'POST';
+      form.action = '{% url "admin:core_membroorcoma_excluir_massa" %}';
+      
+      // Adiciona CSRF token
+      var csrfInput = document.createElement('input');
+      csrfInput.type = 'hidden';
+      csrfInput.name = 'csrfmiddlewaretoken';
+      csrfInput.value = '{{ csrf_token }}';
+      form.appendChild(csrfInput);
+      
+      // Adiciona IDs dos usuários
+      selectedIds.forEach(function(id) {
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'usuarios_ids';
+        input.value = id;
+        form.appendChild(input);
+      });
+      
+      document.body.appendChild(form);
+      form.submit();
+    }
+  </script>
+  
   <script>
     (function() {
       var overlay = document.getElementById('confirmOverlay');
