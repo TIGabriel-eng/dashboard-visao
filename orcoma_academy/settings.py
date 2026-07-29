@@ -211,6 +211,7 @@ else:
         'https://academy.orcoma.com.br',
         'https://orcoma-academy.vercel.app',
         'https://orc-academy.vercel.app',
+        'https://academy.orcomacontabilidade.com.br/login',
     ]
 CORS_ALLOW_CREDENTIALS = True
 
