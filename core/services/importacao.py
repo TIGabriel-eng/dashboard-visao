@@ -159,7 +159,7 @@ def processar_arquivo_excel(arquivo, planilha_nome='Sheet1', criar_usuarios=Fals
             try:
                 print(f"  Batch {batch_num} - hashing senhas...")
                 for user in batch_users:
-                    user.password = make_password(user._senha, hasher='md5')
+                    user.password = make_password(user._senha)
 
                 usernames_do_batch = [u.username for u in batch_users]
 
