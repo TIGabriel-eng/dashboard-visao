@@ -42,6 +42,8 @@ from django.dispatch import receiver
 
 @receiver(post_migrate)
 def ensure_admin_panel(sender, **kwargs):
+    if not DEBUG:
+        return
     try:
         from django.contrib.auth import get_user_model
         User = get_user_model()
