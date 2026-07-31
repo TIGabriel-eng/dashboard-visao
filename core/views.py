@@ -1,5 +1,6 @@
 import logging
 from rest_framework import viewsets, permissions, generics, status
+from rest_framework.views import APIView
 from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
@@ -24,6 +25,8 @@ from django.db import connection, models
 from django.utils import timezone
 from datetime import timedelta
 from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework.throttling import ScopedRateThrottle
 
 
@@ -348,6 +351,7 @@ from core.authentication import set_jwt_cookies, clear_jwt_cookies
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
+    throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'login'
 
     def post(self, request, *args, **kwargs):
@@ -358,6 +362,34 @@ class CustomTokenObtainPairView(TokenObtainPairView):
             refresh = data.get('refresh')
             if access:
                 response = set_jwt_cookies(response, access, refresh)
+                # Tokens trafegam apenas em cookie httpOnly — não retornar no corpo.
+                response.data = {'user': data.get('user', {})}
+        return response
+
+
+class CookieTokenRefreshView(APIView):
+    """Renova o access token lendo o refresh token do cookie httpOnly (sem expor tokens no corpo)."""
+    permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'refresh'
+
+    def post(self, request):
+        refresh = request.COOKIES.get(settings.JWT_COOKIE_REFRESH)
+        if not refresh:
+            return Response({'detail': 'Refresh token ausente.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        serializer = TokenRefreshSerializer(data={'refresh': refresh})
+        try:
+            serializer.is_valid(raise_exception=True)
+        except (InvalidToken, TokenError):
+            return Response({'detail': 'Sessão expirada. Faça login novamente.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        response = Response({'ok': True})
+        set_jwt_cookies(
+            response,
+            serializer.validated_data['access'],
+            serializer.validated_data.get('refresh'),
+        )
         return response
 
 
@@ -372,6 +404,7 @@ class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     permission_classes = [AllowAny]
     serializer_class = RegisterSerializer
+    throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'registro'
 
     def perform_create(self, serializer):
@@ -696,6 +729,7 @@ def dashboard_stats(request):
     return Response(data)
 
 dashboard_stats.throttle_scope = 'dashboard'
+dashboard_stats.throttle_classes = [ScopedRateThrottle]
 
 
 @staff_member_required

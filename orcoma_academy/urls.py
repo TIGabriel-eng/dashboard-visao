@@ -3,8 +3,7 @@ from django.urls import path, include
 from django.shortcuts import redirect
 from django.conf import settings
 from django.conf.urls.static import static
-from core.views import CustomTokenObtainPairView, admin_backup_database, admin_restore_database
-from rest_framework_simplejwt.views import TokenRefreshView
+from core.views import CustomTokenObtainPairView, CookieTokenRefreshView, admin_backup_database, admin_restore_database
 
 urlpatterns = [
     path('', lambda request: redirect('/admin/login/?next=/admin/'), name='root'),
@@ -13,7 +12,7 @@ urlpatterns = [
     path('admin/restore-database/', admin_restore_database, name='restore_database'),
     path('api/', include('core.urls')),
     path('api/token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/token/refresh/', CookieTokenRefreshView.as_view(), name='token_refresh'),
 ]
 
 if settings.DEBUG:

@@ -234,6 +234,12 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.AllowAny',
     ],
     'DATETIME_FORMAT': '%d/%m/%Y %H:%M',
+    'DEFAULT_THROTTLE_RATES': {
+        'login': '10/min',
+        'registro': '5/hour',
+        'refresh': '10/min',
+        'dashboard': '60/min',
+    },
 }
 
 # Cookies JWT

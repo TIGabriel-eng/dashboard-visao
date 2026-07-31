@@ -33,4 +33,5 @@ urlpatterns = [
     path('certificados/<int:pk>/download/', views.download_certificado, name='download-certificado'),
     path('busca/', views.busca, name='busca'),
     path('user-stats/', views.user_stats, name='user-stats'),
+    path('logout/', views.logout_view, name='logout'),
 ]

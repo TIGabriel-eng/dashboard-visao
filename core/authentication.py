@@ -14,21 +14,23 @@ class CookieJWTAuthentication(JWTAuthentication):
 
 
 def set_jwt_cookies(response, access, refresh=None):
-    expires = timezone.now() + getattr(settings, 'JWT_COOKIE_MAX_AGE', timedelta(days=1))
+    access_expires = timezone.now() + getattr(settings, 'JWT_COOKIE_MAX_AGE', timedelta(days=1))
     response.set_cookie(
         settings.JWT_COOKIE,
         access,
-        expires=expires,
+        expires=access_expires,
         httponly=getattr(settings, 'JWT_COOKIE_HTTPONLY', True),
         secure=getattr(settings, 'JWT_COOKIE_SECURE', False),
         samesite=getattr(settings, 'JWT_COOKIE_SAMESITE', 'Lax'),
         path=getattr(settings, 'JWT_COOKIE_PATH', '/'),
     )
     if refresh:
+        refresh_lifetime = settings.SIMPLE_JWT.get('REFRESH_TOKEN_LIFETIME', timedelta(days=7))
+        refresh_expires = timezone.now() + refresh_lifetime
         response.set_cookie(
             settings.JWT_COOKIE_REFRESH,
             refresh,
-            expires=expires,
+            expires=refresh_expires,
             httponly=getattr(settings, 'JWT_COOKIE_HTTPONLY', True),
             secure=getattr(settings, 'JWT_COOKIE_SECURE', False),
             samesite=getattr(settings, 'JWT_COOKIE_SAMESITE', 'Lax'),
