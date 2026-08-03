@@ -231,7 +231,7 @@ class Video(models.Model):
 
 
 class Modulo(models.Model):
-    """Módulo de um curso - agrupa vídeos e materiais relacionados"""
+
     curso = models.ForeignKey(Curso, on_delete=models.CASCADE, related_name='modulos')
     titulo = models.CharField(max_length=255)
     descricao = models.TextField(blank=True)
@@ -617,6 +617,24 @@ class Avaliacao(models.Model):
 
     def __str__(self):
         return f'{self.usuario.username} - {self.modulo.titulo} - {self.nota}★'
+
+
+class Comentario(models.Model):
+    """Comentários e respostas sobre módulos"""
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='comentarios')
+    modulo = models.ForeignKey(Modulo, on_delete=models.CASCADE, related_name='comentarios')
+    texto = models.TextField()
+    comentario_pai = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='respostas')
+    curtido_por = models.ManyToManyField(User, blank=True, related_name='comentarios_curtidos')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Comentário'
+        verbose_name_plural = 'Comentários'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.usuario.username} - {self.modulo.titulo} - {self.texto[:30]}'
 
 
 @receiver(post_save, sender=User)

@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
-from .models import Curso, Trilha, Evento, Novidade, LogAtividade, CursoVisualizacao, Matricula, FormacaoAcademica, Habilidade, Ambiente, Modulo, Material, Certificado, MetaSemanal, Video, Notificacao
+from .models import Curso, Trilha, Evento, Novidade, LogAtividade, CursoVisualizacao, Matricula, FormacaoAcademica, Habilidade, Ambiente, Modulo, Material, Certificado, MetaSemanal, Video, Notificacao, Avaliacao, Comentario
 from core.services.acesso import filtrar_cursos_acessiveis, user_can_access_curso, get_academias_permitidas, get_user_role, get_academias_permitidas_para_role
 from .serializers import (
     CursoSerializer, CursoListSerializer, TrilhaSerializer, TrilhaListSerializer,
@@ -13,7 +13,7 @@ from .serializers import (
     MatriculaSerializer, MatriculaCreateSerializer,
     FormacaoAcademicaSerializer, HabilidadeSerializer,
     ModuloSerializer, MaterialSerializer,
-    CertificadoSerializer, MetaSemanalSerializer, AvaliacaoSerializer,
+    CertificadoSerializer, MetaSemanalSerializer, AvaliacaoSerializer, ComentarioSerializer,
     NotificacaoSerializer
 )
 from django.contrib.auth.models import User
@@ -1264,3 +1264,93 @@ def modulo_avaliar(request, pk):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET', 'POST'])
+def modulo_comentarios(request, pk):
+    """Lista e cria comentários de um módulo específico"""
+    try:
+        modulo = Modulo.objects.select_related('curso').get(pk=pk)
+    except Modulo.DoesNotExist:
+        return Response(
+            {'detail': 'Módulo não encontrado.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    if not user_can_access_curso(modulo.curso, request.user):
+        return Response(
+            {'detail': 'Você não tem permissão para acessar este módulo.'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    if request.method == 'GET':
+        comentarios = Comentario.objects.filter(
+            modulo=pk, comentario_pai__isnull=True
+        ).order_by('-created_at').select_related('usuario').prefetch_related('curtido_por')
+        serializer = ComentarioSerializer(comentarios, many=True, context={'request': request})
+        return Response({'results': serializer.data})
+
+    if not request.user.is_authenticated:
+        return Response(
+            {'detail': 'Autenticação necessária para comentar.'},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+    serializer = ComentarioSerializer(data={
+        'modulo': pk,
+        'texto': request.data.get('texto'),
+        'comentario_pai': request.data.get('comentario_pai'),
+    }, context={'request': request})
+
+    if serializer.is_valid():
+        serializer.save(usuario=request.user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['DELETE'])
+@permission_classes([permissions.IsAuthenticated])
+def comentario_detail(request, pk):
+    """Exclui um comentário (somente o autor ou staff)"""
+    try:
+        comentario = Comentario.objects.get(pk=pk)
+    except Comentario.DoesNotExist:
+        return Response(
+            {'detail': 'Comentário não encontrado.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    if comentario.usuario != request.user and not (request.user.is_superuser or request.user.is_staff):
+        return Response(
+            {'detail': 'Você não tem permissão para excluir este comentário.'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    comentario.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def curtir_comentario(request, pk):
+    """Curtir/descurtir um comentário"""
+    try:
+        comentario = Comentario.objects.get(pk=pk)
+    except Comentario.DoesNotExist:
+        return Response(
+            {'detail': 'Comentário não encontrado.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    if comentario.curtido_por.filter(pk=request.user.pk).exists():
+        comentario.curtido_por.remove(request.user)
+        curtido = False
+    else:
+        comentario.curtido_por.add(request.user)
+        curtido = True
+
+    return Response({
+        'curtidas': comentario.curtido_por.count(),
+        'curtido_por_mim': curtido,
+    })

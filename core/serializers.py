@@ -7,7 +7,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import (
     Curso, Trilha, Evento, Novidade, LogAtividade, Perfil, Matricula,
     FormacaoAcademica, Habilidade, Video, Modulo, Material,
-    Certificado, MetaSemanal, Avaliacao, Notificacao,
+    Certificado, MetaSemanal, Avaliacao, Comentario, Notificacao,
 )
 from core.services.acesso import user_can_access_curso, get_user_role
 
@@ -566,11 +566,51 @@ class AvaliacaoSerializer(serializers.ModelSerializer):
 
     def get_usuario_avatar(self, obj):
         request = self.context.get('request')
-        if obj.usuario.perfil and obj.usuario.perfil.avatar:
+        perfil = getattr(obj.usuario, 'perfil', None)
+        if perfil and perfil.avatar:
             if request:
                 return request.build_absolute_uri(obj.usuario.perfil.avatar.url)
             return obj.usuario.perfil.avatar.url
         return ''
+
+
+class ComentarioSerializer(serializers.ModelSerializer):
+    usuario_nome = serializers.SerializerMethodField()
+    usuario_avatar = serializers.SerializerMethodField()
+    respostas = serializers.SerializerMethodField()
+    curtidas = serializers.SerializerMethodField()
+    curtido_por_mim = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Comentario
+        fields = (
+            'id', 'usuario', 'usuario_nome', 'usuario_avatar', 'modulo', 'texto',
+            'comentario_pai', 'respostas', 'curtidas', 'curtido_por_mim', 'created_at',
+        )
+        read_only_fields = ('id', 'usuario', 'created_at')
+
+    def get_usuario_nome(self, obj):
+        return obj.usuario.get_full_name() or obj.usuario.username
+
+    def get_usuario_avatar(self, obj):
+        request = self.context.get('request')
+        perfil = getattr(obj.usuario, 'perfil', None)
+        if perfil and perfil.avatar:
+            if request:
+                return request.build_absolute_uri(obj.usuario.perfil.avatar.url)
+            return obj.usuario.perfil.avatar.url
+        return ''
+
+    def get_respostas(self, obj):
+        respostas = obj.respostas.all().select_related('usuario')
+        return ComentarioSerializer(respostas, many=True, context=self.context).data
+
+    def get_curtidas(self, obj):
+        return obj.curtido_por.count()
+
+    def get_curtido_por_mim(self, obj):
+        user = self.context.get('request').user
+        return bool(user and user.is_authenticated and obj.curtido_por.filter(pk=user.pk).exists())
 
 
 class MetaSemanalSerializer(serializers.ModelSerializer):

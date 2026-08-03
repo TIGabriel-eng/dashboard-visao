@@ -11,7 +11,7 @@ from django.urls import path, reverse
 from django.db.models import Count, Q
 from django.contrib.auth import get_user_model
 from django import forms
-from .models import Curso, Video, Modulo, Material, Trilha, Evento, Novidade, LogAtividade, Cliente, MembroOrcoma, CursoVisualizacao, Matricula, Plano, Ambiente, Perfil, Permissao, FormacaoAcademica, Habilidade, MetaSemanal, RegraAtribuicaoPlano, AcessoRoleAcademia
+from .models import Curso, Video, Modulo, Material, Trilha, Evento, Novidade, LogAtividade, Cliente, MembroOrcoma, CursoVisualizacao, Matricula, Plano, Ambiente, Perfil, Permissao, FormacaoAcademica, Habilidade, MetaSemanal, RegraAtribuicaoPlano, AcessoRoleAcademia, Comentario
 from .forms import CursoAdminForm, MembroOrcomaAddForm, ClienteAddForm, ImportarUsuariosForm, EMPRESA_PADRAO
 from .services.importacao import processar_arquivo_excel, gerar_template_bytes, gerar_relatorio_bytes
 
@@ -1181,6 +1181,18 @@ class HabilidadeAdmin(admin.ModelAdmin):
     list_display = ('usuario', 'nome')
     search_fields = ('usuario__username', 'nome')
     raw_id_fields = ('usuario',)
+
+
+@admin.register(Comentario)
+class ComentarioAdmin(admin.ModelAdmin):
+    list_display = ('usuario', 'modulo', 'texto_resumido', 'created_at')
+    search_fields = ('usuario__username', 'texto', 'modulo__titulo')
+    list_filter = ('created_at',)
+    raw_id_fields = ('usuario', 'modulo', 'comentario_pai')
+
+    @admin.display(description='Comentário')
+    def texto_resumido(self, obj):
+        return obj.texto[:50]
 
 
 

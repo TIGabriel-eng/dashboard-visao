@@ -215,6 +215,7 @@ else:
         'https://orc-academy.vercel.app',
         'https://academy.orcomacontabilidade.com.br',
         'https://dashboard.orcomacontabilidade.com.br',
+        'http://localhost:5173/'
     ]
 CORS_ALLOW_CREDENTIALS = True
 
