@@ -18,6 +18,7 @@ router.register(r'notificacoes', views.NotificacaoViewSet, basename='notificacao
 urlpatterns = [
     path('', include(router.urls)),
     path('ping/', views.ping, name='ping'),
+    path('ambientes/', views.listar_ambientes, name='ambientes'),
     path('dashboard/', views.dashboard_stats, name='dashboard-stats'),
     path('dashboard-data/', views.dashboard_stats, name='dashboard-data'),
     path('cursos-recomendados/', views.cursos_recomendados, name='cursos-recomendados'),

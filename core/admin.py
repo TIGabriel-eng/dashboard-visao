@@ -5,14 +5,14 @@ from django.contrib.auth.models import User, Group, Permission
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin, GroupAdmin
 from django.contrib.contenttypes.models import ContentType
 from django.shortcuts import redirect, get_object_or_404, render
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, JsonResponse
 from django.utils.html import format_html
 from django.urls import path, reverse
 from django.db.models import Count, Q
 from django.contrib.auth import get_user_model
 from django import forms
-from .models import Curso, Video, Modulo, Material, Trilha, Evento, Novidade, LogAtividade, Cliente, MembroOrcoma, CursoVisualizacao, Matricula, Plano, Ambiente, Perfil, Permissao, FormacaoAcademica, Habilidade, MetaSemanal, RegraAtribuicaoPlano, AcessoRoleAcademia, Comentario
-from .forms import CursoAdminForm, MembroOrcomaAddForm, ClienteAddForm, ImportarUsuariosForm, EMPRESA_PADRAO
+from .models import Curso, Video, Modulo, Material, Trilha, Evento, EventoLeitura, Novidade, LogAtividade, Cliente, MembroOrcoma, CursoVisualizacao, Matricula, Plano, Ambiente, Perfil, Permissao, FormacaoAcademica, Habilidade, MetaSemanal, RegraAtribuicaoPlano, AcessoRoleAcademia, Comentario
+from .forms import CursoAdminForm, MembroOrcomaAddForm, ClienteAddForm, ImportarUsuariosForm, TrilhaAdminForm, EMPRESA_PADRAO
 from .services.importacao import processar_arquivo_excel, gerar_template_bytes, gerar_relatorio_bytes
 
 User = get_user_model()
@@ -1001,6 +1001,7 @@ class ModuloInline(admin.StackedInline):
 class CursoAdmin(admin.ModelAdmin):
     form = CursoAdminForm
     inlines = [VideoInline, ModuloInline]
+    change_list_template = 'admin/core/curso/change_list.html'
     list_display = ('titulo', 'tipo', 'ambiente', 'status', 'is_gratuito', 'is_recomendado', 'video_display', 'created_at')
     list_filter = ('ambiente',)
     search_fields = ('titulo', 'descricao', 'slug')
@@ -1025,11 +1026,61 @@ class CursoAdmin(admin.ModelAdmin):
             'all': ('admin/css/curso_admin.css',)
         }
 
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                '<path:object_id>/toggle-gratuito/',
+                self.admin_site.admin_view(self.toggle_gratuito),
+                name='core_curso_toggle_gratuito',
+            ),
+            path(
+                '<path:object_id>/toggle-recomendado/',
+                self.admin_site.admin_view(self.toggle_recomendado),
+                name='core_curso_toggle_recomendado',
+            ),
+            path(
+                '<path:object_id>/toggle-status/',
+                self.admin_site.admin_view(self.toggle_status),
+                name='core_curso_toggle_status',
+            ),
+        ]
+        return custom_urls + urls
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.select_related('ambiente')
+
     def video_display(self, obj):
         if obj.video:
             return '✅ Vídeo carregado'
         return '❌ Sem vídeo'
     video_display.short_description = 'Vídeo'
+
+    # ── Toggles rápidos (Gratuito / Recomendado / Status) ──
+    def _toggle_boolean(self, request, object_id, field_name):
+        if request.method != 'POST':
+            return JsonResponse({'ok': False, 'error': 'Método não permitido.'}, status=405)
+        curso = get_object_or_404(Curso, pk=object_id)
+        value = request.POST.get('value') == 'true'
+        setattr(curso, field_name, value)
+        curso.save(update_fields=[field_name])
+        return JsonResponse({'ok': True, 'value': value})
+
+    def toggle_gratuito(self, request, object_id):
+        return self._toggle_boolean(request, object_id, 'is_gratuito')
+
+    def toggle_recomendado(self, request, object_id):
+        return self._toggle_boolean(request, object_id, 'is_recomendado')
+
+    def toggle_status(self, request, object_id):
+        if request.method != 'POST':
+            return JsonResponse({'ok': False, 'error': 'Método não permitido.'}, status=405)
+        curso = get_object_or_404(Curso, pk=object_id)
+        publicado = request.POST.get('value') == 'true'
+        curso.status = 'publicado' if publicado else 'rascunho'
+        curso.save(update_fields=['status'])
+        return JsonResponse({'ok': True, 'status': curso.status})
 
 
 @admin.register(Modulo)
@@ -1049,10 +1100,16 @@ class MaterialAdmin(admin.ModelAdmin):
 
 @admin.register(Trilha)
 class TrilhaAdmin(admin.ModelAdmin):
+    change_list_template = 'admin/core/trilha/change_list.html'
+    change_form_template = 'admin/core/trilha/change_form.html'
+    form = TrilhaAdminForm
     list_display = ('nome', 'ambiente', 'quantidade_cursos')
     list_filter = ('ambiente',)
     search_fields = ('nome', 'descricao')
-    filter_horizontal = ('cursos',)
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.select_related('ambiente').prefetch_related('cursos')
 
     def quantidade_cursos(self, obj):
         return obj.cursos.count()
@@ -1065,11 +1122,19 @@ class TrilhaAdmin(admin.ModelAdmin):
 
 @admin.register(Evento)
 class EventoAdmin(admin.ModelAdmin):
+    change_list_template = 'admin/core/evento/change_list.html'
     list_display = ('titulo', 'data', 'local')
     list_filter = ('data',)
     search_fields = ('titulo',)
     date_hierarchy = 'data'
     fields = ('titulo', 'descricao', 'imagem', 'data', 'local', 'capacidade', 'url')
+
+
+@admin.register(EventoLeitura)
+class EventoLeituraAdmin(admin.ModelAdmin):
+    list_display = ('usuario', 'evento', 'lida_em')
+    list_filter = ('lida_em',)
+    search_fields = ('usuario__username', 'usuario__email', 'evento__titulo')
 
 
 @admin.register(Novidade)
@@ -1107,9 +1172,53 @@ class MatriculaAdmin(admin.ModelAdmin):
 
 @admin.register(Ambiente)
 class AmbienteAdmin(admin.ModelAdmin):
-    list_display = ('nome', 'ativo', 'created_at')
+    change_list_template = 'admin/core/ambiente/change_list.html'
+    list_display = ('capa_thumb', 'nome', 'descricao_curta', 'ativo', 'created_at')
+    list_display_links = ('nome',)
     list_filter = ('ativo',)
     search_fields = ('nome',)
+    fieldsets = (
+        (None, {
+            'fields': ('nome', 'descricao', 'imagem', 'plano', 'ativo'),
+        }),
+    )
+
+    @admin.display(description='Capa')
+    def capa_thumb(self, obj):
+        if obj.imagem:
+            return format_html(
+                '<img src="{}" style="width:72px;height:40px;object-fit:cover;border-radius:6px;display:block" />',
+                obj.imagem.url,
+            )
+        return format_html('<span style="color:#64748b">Sem imagem</span>')
+
+    @admin.display(description='Descrição')
+    def descricao_curta(self, obj):
+        return obj.descricao[:80] if obj.descricao else '—'
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                '<path:object_id>/toggle-ativo/',
+                self.admin_site.admin_view(self.toggle_ativo),
+                name='core_ambiente_toggle_ativo',
+            ),
+        ]
+        return custom_urls + urls
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.select_related('plano')
+
+    def toggle_ativo(self, request, object_id):
+        if request.method != 'POST':
+            return JsonResponse({'ok': False, 'error': 'Método não permitido.'}, status=405)
+        ambiente = get_object_or_404(Ambiente, pk=object_id)
+        value = request.POST.get('value') == 'true'
+        ambiente.ativo = value
+        ambiente.save(update_fields=['ativo'])
+        return JsonResponse({'ok': True, 'value': value})
 
 
 @admin.register(Plano)

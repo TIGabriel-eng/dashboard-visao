@@ -2,8 +2,10 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from django.forms.widgets import CheckboxSelectMultiple
+from django.utils.html import format_html
 
-from core.models import Perfil, Curso, Plano
+from core.models import Perfil, Curso, Plano, Trilha
 from core.services.acesso import validar_role_planos, get_academias_permitidas_para_role
 
 EMPRESA_PADRAO = 'Orcoma-Org. Comercial e Serviços'
@@ -223,3 +225,73 @@ class CursoAdminForm(forms.ModelForm):
             instance.save()
             self.save_m2m()
         return instance
+
+
+class CursoCardCheckboxSelectMultiple(CheckboxSelectMultiple):
+    """CheckboxSelectMultiple que renderiza cada curso como um card com imagem e dados."""
+
+    def __init__(self, attrs=None):
+        super().__init__(attrs)
+        self._cursos = {}
+
+    def set_cursos(self, cursos):
+        self._cursos = {str(c.pk): c for c in cursos}
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
+        curso = self._cursos.get(str(value))
+        if curso is None:
+            return option
+
+        if curso.thumbnail:
+            thumb = format_html(
+                '<img class="cc-thumb" src="{}" alt="{}" loading="lazy">',
+                curso.thumbnail.url,
+                curso.titulo,
+            )
+        else:
+            thumb = format_html(
+                '<div class="cc-thumb cc-thumb--ph"><i class="fa-solid fa-video"></i></div>'
+            )
+
+        option['attrs']['class'] = 'cc-input'
+        option['attrs']['data-status'] = curso.status
+        option['label'] = format_html(
+            '<div class="cc-card">'
+            '{thumb}'
+            '<span class="cc-check"><i class="fa-solid fa-check"></i></span>'
+            '<span class="cc-tipo">{tipo}</span>'
+            '<div class="cc-body">'
+            '<span class="cc-title">{titulo}</span>'
+            '<span class="cc-academy"><i class="fa-solid fa-building-columns"></i> {academy}</span>'
+            '<span class="cc-status cc-status--{status}"><i class="fa-solid fa-circle"></i> {status_label}</span>'
+            '</div>'
+            '</div>',
+            thumb=thumb,
+            tipo=curso.get_tipo_display(),
+            titulo=curso.titulo,
+            academy=curso.ambiente.nome if curso.ambiente else 'Sem Academy',
+            status=curso.status,
+            status_label=curso.get_status_display(),
+        )
+        return option
+
+    class Media:
+        css = {'all': ('admin/css/trilha_cursos.css',)}
+
+
+class TrilhaAdminForm(forms.ModelForm):
+    class Meta:
+        model = Trilha
+        fields = '__all__'
+        widgets = {'cursos': CursoCardCheckboxSelectMultiple}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        qs = self.fields['cursos'].queryset.select_related('ambiente')
+        widget = self.fields['cursos'].widget
+        # No admin o campo vira um RelatedFieldWidgetWrapper; o widget real fica em .widget
+        if hasattr(widget, 'widget'):
+            widget = widget.widget
+        if hasattr(widget, 'set_cursos'):
+            widget.set_cursos(qs)

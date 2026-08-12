@@ -1,0 +1,228 @@
+{% extends "admin/change_list.html" %}
+{% load i18n static %}
+
+{% block result_list %}
+
+  {% if cl.result_list %}
+  <div class="evento-grid">
+    {% for evento in cl.result_list %}
+      <article class="evento-card" data-id="{{ evento.pk }}">
+        <div class="evento-card__thumb">
+          {% if evento.imagem %}
+            <img src="{{ evento.imagem.url }}" alt="{{ evento.titulo }}" loading="lazy">
+          {% else %}
+            <div class="evento-card__thumb--placeholder"><i class="fa-solid fa-calendar-days"></i></div>
+          {% endif %}
+          <span class="evento-card__date">
+            <i class="fa-solid fa-clock"></i>
+            {{ evento.data|date:"d/m/Y - H:i" }}
+          </span>
+        </div>
+
+        <div class="evento-card__body">
+          <h3 class="evento-card__title">
+            <a href="{% url 'admin:core_evento_change' evento.pk %}">{{ evento.titulo }}</a>
+          </h3>
+
+          {% if evento.local %}
+            <p class="evento-card__meta">
+              <i class="fa-solid fa-location-dot"></i>
+              {{ evento.local }}
+            </p>
+          {% endif %}
+
+          {% if evento.capacidade > 0 %}
+            <p class="evento-card__meta">
+              <i class="fa-solid fa-users"></i>
+              Capacidade: {{ evento.capacidade }}
+            </p>
+          {% endif %}
+
+          <div class="evento-card__actions">
+            {% if evento.url %}
+              <a href="{{ evento.url }}" target="_blank" rel="noopener" class="evento-btn evento-btn--link">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i> Acessar
+              </a>
+            {% endif %}
+            <a href="{% url 'admin:core_evento_change' evento.pk %}" class="evento-btn evento-btn--edit">
+              <i class="fa-solid fa-pencil"></i> Editar
+            </a>
+            <a href="{% url 'admin:core_evento_delete' evento.pk %}" class="evento-btn evento-btn--delete" title="Excluir">
+              <i class="fa-solid fa-trash"></i>
+            </a>
+          </div>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+  {% else %}
+    <div class="evento-empty">
+      <i class="fa-solid fa-calendar-days"></i>
+      <p>Nenhum evento cadastrado ainda.</p>
+    </div>
+  {% endif %}
+
+  <style>
+    .evento-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 20px;
+      margin: 16px 0 24px;
+    }
+
+    .evento-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+    }
+    .evento-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(255, 157, 0, .5);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, .35);
+    }
+
+    .evento-card__thumb {
+      position: relative;
+      aspect-ratio: 16 / 9;
+      background: linear-gradient(135deg, #1a3d6e 0%, #102542 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .evento-card__thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .evento-card__thumb--placeholder {
+      color: rgba(255, 255, 255, .35);
+      font-size: 42px;
+    }
+    .evento-card__date {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      background: rgba(10, 22, 40, .85);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 999px;
+      backdrop-filter: blur(4px);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .evento-card__date i {
+      font-size: 10px;
+      color: var(--accent-orange);
+    }
+
+    .evento-card__body {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .evento-card__title {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.3;
+    }
+    .evento-card__title a:hover {
+      color: var(--accent-orange);
+    }
+
+    .evento-card__meta {
+      margin: 0;
+      font-size: 13px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .evento-card__meta i {
+      width: 14px;
+      text-align: center;
+      color: var(--accent-orange);
+      font-size: 12px;
+    }
+
+    .evento-card__actions {
+      display: flex;
+      gap: 8px;
+      margin-top: auto;
+      padding-top: 12px;
+      border-top: 1px solid var(--border-color);
+    }
+    .evento-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-color);
+      transition: background .2s, border-color .2s;
+      text-decoration: none;
+    }
+    .evento-btn--edit {
+      background: rgba(59, 130, 246, .12);
+      color: #60a5fa;
+      border-color: rgba(59, 130, 246, .25);
+      flex: 1;
+    }
+    .evento-btn--edit:hover {
+      background: rgba(59, 130, 246, .22);
+      color: #93bffb;
+    }
+    .evento-btn--delete {
+      background: rgba(220, 38, 38, .12);
+      color: #f87171;
+      border-color: rgba(220, 38, 38, .25);
+      width: 38px;
+    }
+    .evento-btn--delete:hover {
+      background: rgba(220, 38, 38, .22);
+      color: #fca5a5;
+    }
+    .evento-btn--link {
+      background: rgba(16, 185, 129, .12);
+      color: #34d399;
+      border-color: rgba(16, 185, 129, .25);
+    }
+    .evento-btn--link:hover {
+      background: rgba(16, 185, 129, .22);
+      color: #6ee7b7;
+    }
+
+    .evento-empty {
+      text-align: center;
+      color: var(--text-secondary);
+      padding: 60px 20px;
+      font-size: 15px;
+    }
+    .evento-empty i {
+      font-size: 40px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    @media (max-width: 480px) {
+      .evento-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+{% endblock %}

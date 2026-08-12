@@ -228,6 +228,129 @@
     return html;
   }
 
+  function renderEventosChart(eventosLeituras) {
+    var porEvento = (eventosLeituras && eventosLeituras.por_evento) || [];
+    var totalUsuarios = (eventosLeituras && eventosLeituras.total_usuarios) || 0;
+    var totalLeituras = (eventosLeituras && eventosLeituras.total_leituras) || 0;
+
+    if (porEvento.length === 0) {
+      return '<div class="dashboard-chart"><p style="color:var(--text-muted);text-align:center;padding:40px">Sem dados de acompanhamento ainda</p></div>';
+    }
+
+    function truncar(txt, max) {
+      if (!txt) return '';
+      return txt.length > max ? txt.substring(0, max - 1) + '…' : txt;
+    }
+
+    var labels = porEvento.map(function (e) { return truncar(e.evento, 24); });
+    var valores = porEvento.map(function (e) { return e.usuarios; });
+
+    var html = '<div class="dashboard-chart">';
+    html += '  <div class="dashboard-chart__header">';
+    html += '    <div class="dashboard-chart__title-group">';
+    html += '      <h3 class="dashboard-chart__title"> Quantos usuários acompanham os eventos?</h3>';
+    html += '      <div class="dashboard-chart__legend">';
+    html += '        <span class="dashboard-chart__legend-item"><span class="dashboard-chart__legend-dot" style="background:#a855f7"></span>Usuários</span>';
+    html += '      </div>';
+    html += '    </div>';
+    html += '    <div class="dashboard-chart__stats">';
+    html += '      <div class="dashboard-chart__stat">';
+    html += '        <div class="dashboard-chart__stat-value">' + totalUsuarios + '</div>';
+    html += '        <div class="dashboard-chart__stat-label">Usuários</div>';
+    html += '      </div>';
+    html += '      <div class="dashboard-chart__stat">';
+    html += '        <div class="dashboard-chart__stat-value">' + totalLeituras + '</div>';
+    html += '        <div class="dashboard-chart__stat-label">Leituras</div>';
+    html += '      </div>';
+    html += '      <div class="dashboard-chart__stat">';
+    html += '        <div class="dashboard-chart__stat-value">' + porEvento.length + '</div>';
+    html += '        <div class="dashboard-chart__stat-label">Eventos</div>';
+    html += '      </div>';
+    html += '    </div>';
+    html += '  </div>';
+    html += '  <div class="dashboard-chart__canvas">';
+    html += '    <canvas id="eventosChart"></canvas>';
+    html += '  </div>';
+    html += '</div>';
+
+    setTimeout(function () {
+      var ctx = document.getElementById('eventosChart');
+      if (!ctx) return;
+      var grad = ctx.getContext('2d').createLinearGradient(0, 0, 0, 280);
+      grad.addColorStop(0, 'rgba(168, 85, 247, 0.5)');
+      grad.addColorStop(1, 'rgba(168, 85, 247, 0.15)');
+
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Usuários',
+              data: valores,
+              backgroundColor: grad,
+              borderColor: '#a855f7',
+              borderWidth: 1.5,
+              borderRadius: 8,
+              maxBarThickness: 48,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: {
+            duration: 1200,
+            easing: 'easeOutQuart',
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#0d1f3c',
+              titleColor: '#fff',
+              bodyColor: '#8b9ab5',
+              borderColor: '#1e3350',
+              borderWidth: 1,
+              padding: 14,
+              cornerRadius: 10,
+              boxPadding: 4,
+              usePointStyle: true,
+              callbacks: {
+                title: function (items) {
+                  var idx = items.length ? items[0].dataIndex : 0;
+                  return porEvento[idx].evento;
+                },
+                label: function (ctx) {
+                  var item = porEvento[ctx.dataIndex];
+                  return ctx.parsed.y + ' usuário(s) • ' + item.leituras + ' leitura(s)';
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: '#4a5568', font: { size: 11, family: 'DM Sans' }, maxRotation: 40, minRotation: 0 },
+            },
+            y: {
+              beginAtZero: true,
+              grid: { color: 'rgba(255,255,255,0.03)', drawBorder: false },
+              ticks: {
+                color: '#4a5568',
+                font: { size: 11, family: 'DM Sans' },
+                stepSize: 1,
+                padding: 8,
+              },
+              title: { display: true, text: 'Usuários', color: '#4a5568', font: { size: 11, family: 'DM Sans' } }
+            }
+          }
+        }
+      });
+    }, 50);
+
+    return html;
+  }
+
   function renderFeed(atividades) {
     var html = '<div class="dashboard-feed">';
     html += '  <h3 class="highlight-card__title"><i class="fa-solid fa-clock-rotate-left"></i> Últimas Atividades</h3>';
@@ -391,6 +514,7 @@
     var html = '<div class="dashboard">';
     html += renderMetrics(data.metricas || {});
     html += renderChart(data.crescimento_usuarios || []);
+    html += renderEventosChart(data.eventos_leituras || {});
     html += '<div class="dashboard-columns">';
     html += renderFeed(data.ultimas_atividades || []);
     html += renderHighlights(data.destaques || {});

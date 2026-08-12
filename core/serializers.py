@@ -8,6 +8,7 @@ from .models import (
     Curso, Trilha, Evento, Novidade, LogAtividade, Perfil, Matricula,
     FormacaoAcademica, Habilidade, Video, Modulo, Material,
     Certificado, MetaSemanal, Avaliacao, Comentario, Notificacao,
+    Ambiente,
 )
 from core.services.acesso import user_can_access_curso, get_user_role
 
@@ -256,6 +257,25 @@ class CursoListSerializer(serializers.ModelSerializer):
         return getattr(obj, '_primeiro_video_id', None)
 
 
+class AmbienteSerializer(serializers.ModelSerializer):
+    imagem_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Ambiente
+        fields = ('id', 'nome', 'descricao', 'ativo', 'imagem_url')
+
+    def get_imagem_url(self, obj):
+        if not obj.imagem:
+            return None
+        url = obj.imagem.url
+        if url.startswith('http://') or url.startswith('https://'):
+            return url
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(url)
+        return url
+
+
 class TrilhaSerializer(serializers.ModelSerializer):
     cursos = serializers.SerializerMethodField()
     ambiente_nome = serializers.CharField(source='ambiente.nome', read_only=True)
@@ -275,10 +295,18 @@ class TrilhaSerializer(serializers.ModelSerializer):
 
 class TrilhaListSerializer(serializers.ModelSerializer):
     ambiente_nome = serializers.CharField(source='ambiente.nome', read_only=True)
+    cursos_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Trilha
-        fields = ('id', 'nome', 'ambiente', 'ambiente_nome', 'descricao')
+        fields = ('id', 'nome', 'ambiente', 'ambiente_nome', 'descricao', 'cursos_count')
+
+    def get_cursos_count(self, obj):
+        from core.services.acesso import filtrar_cursos_acessiveis
+        request = self.context.get('request')
+        user = request.user if request else None
+        cursos = obj.cursos.filter(status='publicado')
+        return filtrar_cursos_acessiveis(cursos, user).count()
 
 
 class EventoSerializer(serializers.ModelSerializer):

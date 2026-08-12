@@ -37,6 +37,7 @@ class Permissao(Group):
 class Ambiente(models.Model):
     nome = models.CharField(max_length=100, unique=True, verbose_name='Academy')
     descricao = models.TextField(blank=True)
+    imagem = models.ImageField(upload_to='ambientes/', blank=True, null=True, verbose_name='Imagem de Capa')
     plano = models.ForeignKey(
         'Plano',
         on_delete=models.PROTECT,
@@ -323,6 +324,20 @@ class Evento(models.Model):
 
     def __str__(self):
         return self.titulo
+
+
+class EventoLeitura(models.Model):
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='evento_leituras')
+    evento = models.ForeignKey(Evento, on_delete=models.CASCADE, related_name='leituras')
+    lida_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Leitura de Evento'
+        verbose_name_plural = 'Leituras de Eventos'
+        unique_together = ['usuario', 'evento']
+
+    def __str__(self):
+        return f'{self.usuario} - {self.evento}'
 
 
 class CursoVisualizacao(models.Model):

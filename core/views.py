@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
-from .models import Curso, Trilha, Evento, Novidade, LogAtividade, CursoVisualizacao, Matricula, FormacaoAcademica, Habilidade, Ambiente, Modulo, Material, Certificado, MetaSemanal, Video, Notificacao, Avaliacao, Comentario
+from .models import Curso, Trilha, Evento, EventoLeitura, Novidade, LogAtividade, CursoVisualizacao, Matricula, FormacaoAcademica, Habilidade, Ambiente, Modulo, Material, Certificado, MetaSemanal, Video, Notificacao, Avaliacao, Comentario
 from core.services.acesso import filtrar_cursos_acessiveis, user_can_access_curso, get_academias_permitidas, get_user_role, get_academias_permitidas_para_role
 from .serializers import (
     CursoSerializer, CursoListSerializer, TrilhaSerializer, TrilhaListSerializer,
@@ -14,7 +14,7 @@ from .serializers import (
     FormacaoAcademicaSerializer, HabilidadeSerializer,
     ModuloSerializer, MaterialSerializer,
     CertificadoSerializer, MetaSemanalSerializer, AvaliacaoSerializer, ComentarioSerializer,
-    NotificacaoSerializer
+    NotificacaoSerializer, AmbienteSerializer
 )
 from django.contrib.auth.models import User
 from rest_framework.decorators import api_view, permission_classes, action
@@ -28,12 +28,23 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework.throttling import ScopedRateThrottle
+from core.recaptcha import verify_recaptcha_token
 
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def ping(request):
     return Response({'status': 'ok'}, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def listar_ambientes(request):
+    from core.services.acesso import get_academias_permitidas
+    user = request.user
+    qs = get_academias_permitidas(user)
+    serializer = AmbienteSerializer(qs, many=True, context={'request': request})
+    return Response(serializer.data)
 
 
 class IsStaffOrReadOnly(permissions.BasePermission):
@@ -205,6 +216,38 @@ class EventoViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Evento.objects.all()
     serializer_class = EventoSerializer
 
+    @action(detail=False, methods=['get'], url_path='proximo')
+    def proximo(self, request):
+        agora = timezone.now()
+        evento = Evento.objects.filter(data__gte=agora).order_by('data').first()
+        if not evento:
+            return Response({'evento': None, 'ultima_leitura': None, 'requer_leitura': False})
+
+        ultima_leitura = None
+        requer_leitura = False
+        if request.user.is_authenticated:
+            leitura = EventoLeitura.objects.filter(usuario=request.user, evento=evento).first()
+            if leitura:
+                ultima_leitura = leitura.lida_em.isoformat()
+                requer_leitura = (agora - leitura.lida_em) >= timedelta(hours=24)
+            else:
+                requer_leitura = True
+        return Response({
+            'evento': EventoSerializer(evento, context={'request': request}).data,
+            'ultima_leitura': ultima_leitura,
+            'requer_leitura': requer_leitura,
+        })
+
+    @action(detail=True, methods=['post'], url_path='marcar-lida', permission_classes=[IsAuthenticated])
+    def marcar_lida(self, request, pk=None):
+        evento = self.get_object()
+        leitura, _ = EventoLeitura.objects.update_or_create(
+            usuario=request.user,
+            evento=evento,
+            defaults={'lida_em': timezone.now()},
+        )
+        return Response({'ultima_leitura': leitura.lida_em.isoformat()})
+
 
 class MetaSemanalViewSet(viewsets.ModelViewSet):
     serializer_class = MetaSemanalSerializer
@@ -355,6 +398,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     throttle_scope = 'login'
 
     def post(self, request, *args, **kwargs):
+        verify_recaptcha_token(request.data.get('recaptcha_token'))
         response = super().post(request, *args, **kwargs)
         if response.status_code == 200:
             data = response.data
@@ -408,6 +452,7 @@ class RegisterView(generics.CreateAPIView):
     throttle_scope = 'registro'
 
     def perform_create(self, serializer):
+        verify_recaptcha_token(self.request.data.get('recaptcha_token'))
         user = serializer.save()
         Notificacao.objects.create(
             usuario=user,
@@ -677,6 +722,25 @@ def dashboard_stats(request):
     proximos_eventos = Evento.objects.filter(data__gte=agora).order_by('data')[:3]
     destaques_eventos = EventoSerializer(proximos_eventos, many=True).data
 
+    leituras_eventos = (
+        EventoLeitura.objects
+        .values('evento__titulo')
+        .annotate(
+            usuarios=Count('usuario', distinct=True),
+            leituras=Count('id'),
+        )
+        .order_by('-usuarios', '-leituras')[:10]
+    )
+    leituras_por_evento = [
+        {'evento': item['evento__titulo'], 'usuarios': item['usuarios'], 'leituras': item['leituras']}
+        for item in leituras_eventos
+    ]
+    eventos_leituras = {
+        'por_evento': leituras_por_evento,
+        'total_usuarios': EventoLeitura.objects.values('usuario').distinct().count(),
+        'total_leituras': EventoLeitura.objects.count(),
+    }
+
     top_trilhas = Trilha.objects.annotate(
         total_cursos=Count('cursos')
     ).order_by('-total_cursos')[:5]
@@ -717,6 +781,7 @@ def dashboard_stats(request):
     data = {
         'metricas': metricas,
         'crescimento_usuarios': crescimento,
+        'eventos_leituras': eventos_leituras,
         'ultimas_atividades': ultimas_atividades,
         'destaques': {
             'top_cursos': destaques_cursos,

@@ -1,0 +1,57 @@
+{% extends "admin/change_form.html" %}
+{% load i18n static %}
+
+{% block admin_change_form_document_ready %}
+  {{ block.super }}
+
+  <script>
+    (function() {
+      var field = document.querySelector('.form-row.field-cursos');
+      if (!field) return;
+      var box = field.querySelector('#id_cursos');
+      if (!box) return;
+
+      /* ── Barra de ferramentas ── */
+      var toolbar = document.createElement('div');
+      toolbar.className = 'trilha-cursos-toolbar';
+      toolbar.innerHTML =
+        '<span class="tc-count"></span>' +
+        '<input type="search" class="tc-search" placeholder="Buscar curso por nome ou academy..." aria-label="Buscar curso">' +
+        '<button type="button" class="tc-btn tc-btn--all">Marcar todos</button>' +
+        '<button type="button" class="tc-btn tc-btn--clear">Limpar</button>';
+      field.insertBefore(toolbar, box);
+
+      var inputs = Array.prototype.slice.call(box.querySelectorAll('input[type="checkbox"]'));
+      var lis = Array.prototype.slice.call(box.children);
+
+      function updateCount() {
+        var n = inputs.filter(function(i) { return i.checked; }).length;
+        var el = toolbar.querySelector('.tc-count');
+        el.textContent = 'Cursos selecionados: ' + n + ' de ' + inputs.length;
+      }
+
+      function applyFilter() {
+        var q = toolbar.querySelector('.tc-search').value.trim().toLowerCase();
+        inputs.forEach(function(input, idx) {
+          var li = lis[idx];
+          if (!li) return;
+          var txt = (li.textContent || '').toLowerCase();
+          li.style.display = (!q || txt.indexOf(q) !== -1) ? '' : 'none';
+        });
+      }
+
+      toolbar.querySelector('.tc-search').addEventListener('input', applyFilter);
+      toolbar.querySelector('.tc-btn--all').addEventListener('click', function() {
+        inputs.forEach(function(i) { i.checked = true; });
+        updateCount();
+      });
+      toolbar.querySelector('.tc-btn--clear').addEventListener('click', function() {
+        inputs.forEach(function(i) { i.checked = false; });
+        updateCount();
+      });
+      box.addEventListener('change', updateCount);
+
+      updateCount();
+    })();
+  </script>
+{% endblock %}
