@@ -346,7 +346,7 @@ class MatriculaSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Matricula
-        fields = ('id', 'usuario', 'curso', 'curso_titulo', 'data_inscricao', 'progresso', 'concluido', 'concluido_em', 'ultimo_segundo_assistido', 'video_corrente', 'video_corrente_id', 'video_corrente_titulo')
+        fields = ('id', 'usuario', 'curso', 'curso_titulo', 'data_inscricao', 'progresso', 'concluido', 'concluido_em', 'ultimo_segundo_assistido', 'video_corrente', 'video_corrente_id', 'video_corrente_titulo', 'aulas_concluidas', 'ultima_aula')
         read_only_fields = ('id', 'usuario', 'data_inscricao', 'concluido_em', 'video_corrente_id', 'video_corrente_titulo')
 
 

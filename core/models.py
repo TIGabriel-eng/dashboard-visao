@@ -368,6 +368,16 @@ class Matricula(models.Model):
         related_name='matriculas_ultimo_video',
         help_text='Último vídeo acessado pelo aluno neste curso'
     )
+    aulas_concluidas = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Chaves das aulas concluídas neste curso (sincronizado entre dispositivos).'
+    )
+    ultima_aula = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='Última aula assistida (ex.: {"moduloIdx": 0, "aulaIdx": 2}).'
+    )
 
     class Meta:
         verbose_name = 'Matrícula'

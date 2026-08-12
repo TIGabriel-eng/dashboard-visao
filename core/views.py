@@ -323,16 +323,54 @@ class MatriculaViewSet(viewsets.ModelViewSet):
     def atualizar_progresso(self, request):
         curso_id = request.data.get('curso')
         progresso = request.data.get('progresso', 0)
+        aulas_concluidas = request.data.get('aulas_concluidas')
+        ultima_aula = request.data.get('ultima_aula')
+        concluido = request.data.get('concluido')
+        ultimo_segundo_assistido = request.data.get('ultimo_segundo_assistido')
         if not curso_id:
             return Response({'detail': 'curso é obrigatório.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            progresso = int(progresso)
+        except (TypeError, ValueError):
+            progresso = 0
+        progresso = max(0, min(100, progresso))
+
         matricula, created = Matricula.objects.get_or_create(
             usuario=request.user,
             curso_id=curso_id,
             defaults={'progresso': progresso}
         )
         if not created:
-            matricula.progresso = progresso
+            # Nunca regride o percentual já alcançado
+            matricula.progresso = max(matricula.progresso, progresso)
             matricula.save()
+
+        if aulas_concluidas is not None:
+            if isinstance(aulas_concluidas, list):
+                uniao = set(matricula.aulas_concluidas or []) | set(aulas_concluidas)
+                matricula.aulas_concluidas = sorted(uniao)
+                matricula.progresso = max(matricula.progresso, progresso)
+                matricula.save()
+        if ultima_aula is not None and isinstance(ultima_aula, dict):
+            matricula.ultima_aula = ultima_aula
+            matricula.save()
+        if concluido:
+            matricula.concluido = True
+            matricula.concluido_em = matricula.concluido_em or timezone.now()
+            matricula.progresso = 100
+            matricula.save()
+            Certificado.objects.get_or_create(matricula=matricula)
+        if ultimo_segundo_assistido is not None:
+            try:
+                segundo = int(ultimo_segundo_assistido)
+            except (TypeError, ValueError):
+                segundo = 0
+            if segundo > matricula.ultimo_segundo_assistido:
+                delta = segundo - matricula.ultimo_segundo_assistido
+                matricula.tempo_total_assistido += min(delta, 30)
+            matricula.ultimo_segundo_assistido = segundo
+            matricula.save()
+
         serializer = MatriculaSerializer(matricula)
         return Response(serializer.data)
 
