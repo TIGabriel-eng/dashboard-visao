@@ -193,6 +193,8 @@ class CursoViewSet(viewsets.ModelViewSet):
 
 
 class TrilhaViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [AllowAny]
+
     def get_queryset(self):
         user = self.request.user
         qs = Trilha.objects.select_related('ambiente').prefetch_related('cursos')
@@ -215,6 +217,7 @@ class TrilhaViewSet(viewsets.ReadOnlyModelViewSet):
 class EventoViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Evento.objects.all()
     serializer_class = EventoSerializer
+    permission_classes = [AllowAny]
 
     @action(detail=False, methods=['get'], url_path='proximo')
     def proximo(self, request):
@@ -266,6 +269,7 @@ class MetaSemanalViewSet(viewsets.ModelViewSet):
 class NovidadeViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Novidade.objects.filter(ativo=True)
     serializer_class = NovidadeSerializer
+    permission_classes = [AllowAny]
 
 
 class MatriculaViewSet(viewsets.ModelViewSet):
@@ -432,6 +436,7 @@ from core.authentication import set_jwt_cookies, clear_jwt_cookies
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
+    permission_classes = [AllowAny]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'login'
 
@@ -828,6 +833,12 @@ def dashboard_stats(request):
         },
         'alertas': alertas,
     }
+    if not (user.is_authenticated and user.is_staff):
+        for curso in data['destaques']['top_cursos']:
+            curso.pop('status', None)
+        data.pop('ultimas_atividades', None)
+        data.pop('alertas', None)
+        data.pop('eventos_leituras', None)
     cache.set(cache_key, data, 120)  # 120 segundos
     return Response(data)
 
@@ -1370,6 +1381,7 @@ def modulo_avaliar(request, pk):
 
 
 @api_view(['GET', 'POST'])
+@permission_classes([AllowAny])
 def modulo_comentarios(request, pk):
     """Lista e cria comentários de um módulo específico"""
     try:

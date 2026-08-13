@@ -18,3 +18,4 @@ django-cloudinary-storage
 cloudinary
 reportlab>=4.0.0
 django-apscheduler>=0.7.0
+argon2-cffi
