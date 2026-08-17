@@ -1,6 +1,6 @@
 /* ============================================
    DASHBOARD — VISÃO GERAL
-   Tema escuro premium — Orcoma Academy
+   Tema escuro premium — Visão Academy
    ============================================ */
 
 /* ── Dashboard App Shell ── */
@@ -16,7 +16,7 @@
   align-items: center;
   justify-content: center;
   padding: 100px 20px;
-  color: var(--text-secondary);
+  color: #7a4a26;
   gap: 20px;
 }
 
@@ -59,7 +59,7 @@
   font-family: var(--font-display);
   font-size: 30px;
   font-weight: 700;
-  color: var(--text-primary);
+  color: #512614;
   text-align: center;
   margin: 0 0 24px 0;
   line-height: 1.2;
@@ -70,7 +70,7 @@
   display: block;
   font-size: 14px;
   font-weight: 400;
-  color: var(--text-muted);
+  color: #7a4a26;
   margin-top: 6px;
   letter-spacing: 0;
 }

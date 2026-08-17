@@ -6,9 +6,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{% block title %}{% endblock %} | Orcoma Academy</title>
+<title>{% block title %}{% endblock %} | Visão Academy</title>
 
-<link rel="icon" type="image/png" href="{% static 'admin/img/favicon.png' %}">
+<link rel="icon" type="image/png" href="{% static 'admin/img/icone.png' %}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -34,7 +34,7 @@
   <aside class="admin-sidebar" id="adminSidebar">
     <div class="admin-sidebar__logo">
       <a href="{% url 'admin:index' %}">
-        <img src="{% static 'admin/img/logo.png' %}" alt="Orcoma Academy" class="admin-sidebar__logo-img">
+        <img src="{% static 'admin/img/logo.png' %}" alt="Visão Academy" class="admin-sidebar__logo-img">
       </a>
     </div>
 
@@ -168,7 +168,7 @@
 
     {% block footer %}
     <div class="admin-footer">
-      <p>&copy; {% now "Y" %} Orcoma Academy. Todos os direitos reservados.</p>
+      <p>&copy; {% now "Y" %} Visão Academy. Todos os direitos reservados.</p>
     </div>
     {% endblock %}
 

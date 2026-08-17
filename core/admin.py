@@ -17,8 +17,8 @@ from .services.importacao import processar_arquivo_excel, gerar_template_bytes, 
 
 User = get_user_model()
 
-admin.site.site_header = 'Orcoma Academy'
-admin.site.site_title = 'Orcoma Academy - Admin'
+admin.site.site_header = 'Visão tributária Academy'
+admin.site.site_title = 'Visão Tributária - Academy'
 admin.site.index_title = 'Painel Administrativo'
 admin.site.site_url = None
 

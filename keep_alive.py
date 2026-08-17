@@ -1,5 +1,5 @@
 """
-Script de Keep Alive para o Orcoma Academy.
+Script de Keep Alive para o vISÃO Academy.
 Mantém o backend do Render acordado fazendo pings periódicos.
 
 Uso local:   python keep_alive.py

@@ -16,7 +16,7 @@
       justify-content: center;
       min-height: 100vh;
       padding: 20px;
-      background: var(--bg-primary);
+      background: #E8B167;
     }
     body.login .admin-sidebar { display: none; }
     
@@ -24,7 +24,7 @@
       margin-left: 0;
       max-width: 420px;
       width: 100%;
-      background: var(--bg-card);
+      background: #3d1e0d;
       border-radius: 12px;
       padding: 40px 32px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.3);
@@ -40,7 +40,7 @@
       font-family: var(--font-display);
       font-size: 22px;
       font-weight: 600;
-      color: var(--text-primary);
+      color: #512614;
       margin: 0 0 24px;
     }
   </style>
@@ -50,7 +50,7 @@
 
 {% block content %}
   <div class="login-branding">
-    <img src="{% static 'admin/img/logo.png' %}" alt="Orcoma Academy" class="admin-logo">
+    <img src="{% static 'admin/img/logo.png' %}" alt="Visão Academy" class="admin-logo">
   </div>
   <h1 class="login-title">Acessar Painel</h1>
   {{ block.super }}

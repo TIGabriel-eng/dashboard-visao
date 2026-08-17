@@ -212,21 +212,13 @@ if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True
 else:
     CORS_ALLOWED_ORIGINS = [
-        'https://academy.orcoma.com.br',
-        'https://orcoma-academy.vercel.app',
-        'https://orc-academy.vercel.app',
-        'https://academy.orcomacontabilidade.com.br',
-        'https://dashboard.orcomacontabilidade.com.br',
+        'https://dashboard-visao.onrender.com',
         'http://localhost:5173'
     ]
 CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://academy.orcoma.com.br',
-    'https://orcoma-academy.vercel.app',
-    'https://orc-academy.vercel.app',
-    'https://academy.orcomacontabilidade.com.br',
-    'https://dashboard.orcomacontabilidade.com.br',
+    'https://dashboard-visao.onrender.com',
 ]
 
 # REST Framework

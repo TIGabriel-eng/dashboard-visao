@@ -1176,11 +1176,53 @@ def busca(request):
     })
 
 
+def _certificado_on_page(canvas_obj, doc):
+    w, h = doc.pagesize
+    m = 2 * cm
+
+    canvas_obj.saveState()
+
+    canvas_obj.setStrokeColor(HexColor('#C6853A'))
+    canvas_obj.setLineWidth(1.2)
+    canvas_obj.rect(m, m, w - 2 * m, h - 2 * m)
+
+    canvas_obj.setStrokeColor(HexColor('#F0A93B'))
+    canvas_obj.setLineWidth(0.6)
+    canvas_obj.rect(m + 0.35 * cm, m + 0.35 * cm, w - 2 * m - 0.7 * cm, h - 2 * m - 0.7 * cm)
+
+    sx = w - 2.4 * cm
+    sy = m + 2.6 * cm
+    sr = 1.25 * cm
+    canvas_obj.setLineWidth(1)
+    canvas_obj.setStrokeColor(HexColor('#F0A93B'))
+    canvas_obj.circle(sx, sy, sr, stroke=1, fill=0)
+    canvas_obj.setFont('Helvetica-Bold', 9)
+    canvas_obj.setFillColor(HexColor('#8a4d23'))
+    canvas_obj.drawCentredString(sx, sy + 5, 'ACADEMIA')
+    canvas_obj.setFont('Helvetica', 7)
+    canvas_obj.drawCentredString(sx, sy - 4, 'VISÃO')
+    canvas_obj.drawCentredString(sx, sy - 12, 'TRIBUTÁRIA')
+
+    canvas_obj.restoreState()
+
+
 def gerar_pdf_certificado(certificado):
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=landscape(A4), rightMargin=2*cm, leftMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm)
     
     styles = getSampleStyleSheet()
+    
+    brand_style = styles['Normal']
+    brand_style.fontName = 'Helvetica-Bold'
+    brand_style.fontSize = 16
+    brand_style.textColor = HexColor('#C6853A')
+    brand_style.alignment = TA_CENTER
+    
+    brand_tag_style = styles['Normal']
+    brand_tag_style.fontName = 'Helvetica'
+    brand_tag_style.fontSize = 10
+    brand_tag_style.textColor = HexColor('#8a4d23')
+    brand_tag_style.alignment = TA_CENTER
     
     title_style = styles['Title']
     title_style.fontName = 'Helvetica-Bold'
@@ -1201,7 +1243,10 @@ def gerar_pdf_certificado(certificado):
     
     content = []
     
-    content.append(Spacer(1, 2*cm))
+    content.append(Spacer(1, 1.2*cm))
+    content.append(Paragraph('VISÃO TRIBUTÁRIA ACADEMY', brand_style))
+    content.append(Paragraph('Sua Escola Tributária!', brand_tag_style))
+    content.append(Spacer(1, 0.6*cm))
     content.append(Paragraph('CERTIFICADO', title_style))
     content.append(Spacer(1, 1*cm))
     content.append(Paragraph('Certificamos que', subtitle_style))
@@ -1224,7 +1269,7 @@ def gerar_pdf_certificado(certificado):
     course_style = styles['Heading2']
     course_style.fontName = 'Helvetica-Bold'
     course_style.fontSize = 18
-    course_style.textColor = HexColor('#FF9D00')
+    course_style.textColor = HexColor('#C6853A')
     course_style.alignment = TA_CENTER
     content.append(Paragraph(certificado.matricula.curso.titulo, course_style))
     
@@ -1241,9 +1286,9 @@ def gerar_pdf_certificado(certificado):
     footer_style.fontSize = 10
     footer_style.textColor = HexColor('#666666')
     footer_style.alignment = TA_CENTER
-    content.append(Paragraph('Orcoma Academy — https://academy.orcoma.com.br', footer_style))
+    content.append(Paragraph('Visão Tributária Academy - Sua Escola Tributária!', footer_style))
     
-    doc.build(content)
+    doc.build(content, onFirstPage=_certificado_on_page, onLaterPages=_certificado_on_page)
     buffer.seek(0)
     return buffer
 
