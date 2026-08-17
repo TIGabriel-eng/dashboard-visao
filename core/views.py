@@ -499,7 +499,7 @@ class RegisterView(generics.CreateAPIView):
         user = serializer.save()
         Notificacao.objects.create(
             usuario=user,
-            titulo='Bem-vindo à Orcoma Academy!',
+            titulo='Bem-vindo à Visão Academy!',
             mensagem='Olá! Que bom ter você conosco. Explore nossos cursos, eventos e trilhas de aprendizagem.',
             tipo='boas_vindas',
             link='/meus-cursos',

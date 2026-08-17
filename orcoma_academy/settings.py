@@ -218,10 +218,6 @@ else:
     CORS_ALLOWED_ORIGINS = [
         'https://dashboard-visao.onrender.com',
         'https://visao-tributaria.vercel.app',
-        'https://academy.orcoma.com.br',
-        'https://dashboard.orcomacontabilidade.com.br',
-        'https://orc-academy.vercel.app',
-        'https://orcoma-academy.vercel.app',
         'http://localhost:5173',
     ]
 CORS_ALLOW_CREDENTIALS = True
@@ -229,10 +225,6 @@ CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = [
     'https://dashboard-visao.onrender.com',
     'https://visao-tributaria.vercel.app',
-    'https://academy.orcoma.com.br',
-    'https://dashboard.orcomacontabilidade.com.br',
-    'https://orc-academy.vercel.app',
-    'https://orcoma-academy.vercel.app',
 ]
 
 # REST Framework
@@ -258,7 +250,7 @@ JWT_COOKIE = 'access_token'
 JWT_COOKIE_REFRESH = 'refresh_token'
 JWT_COOKIE_SECURE = not DEBUG
 JWT_COOKIE_HTTPONLY = True
-JWT_COOKIE_SAMESITE = 'Lax'
+JWT_COOKIE_SAMESITE = 'None'
 JWT_COOKIE_PATH = '/'
 
 SIMPLE_JWT = {

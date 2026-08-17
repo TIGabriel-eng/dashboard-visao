@@ -8,7 +8,7 @@ Uso no cron: configurado no render.yaml (a cada 5 min)
 Recomendação: Use também o UptimeRobot (gratuito) para monitoramento externo:
   1. Crie uma conta em https://uptimerobot.com
   2. Adicione um monitor HTTP(s) apontando para:
-     https://orcoma-academy-backend.onrender.com/api/ping/
+      https://dashboard-visao.onrender.com/api/ping/
   3. Intervalo: 5 minutos
   4. Isso mantém o backend acordado 24h mesmo se o cron do Render falhar
 """
@@ -22,7 +22,7 @@ import time
 # URL principal para ping
 # O Render free dorme após 15 min sem atividade
 # O ping periódico mantém o servidor acordado
-DEFAULT_URL = "https://orcoma-academy-backend.onrender.com/api/ping/"
+DEFAULT_URL = "https://dashboard-visao.onrender.com/api/ping/"
 
 URLS = [
     os.environ.get("APP_URL", DEFAULT_URL),
