@@ -2,6 +2,7 @@
 
 import django.db.models.deletion
 from django.db import migrations, models
+from django.db.migrations.operations import SeparateDatabaseAndState
 from django.utils.text import slugify
 
 
@@ -19,6 +20,13 @@ def populate_slugs(apps, schema_editor):
             curso.save(update_fields=['slug'])
 
 
+def drop_conflicting_slug_index(apps, schema_editor):
+    if schema_editor.connection.vendor == 'postgresql':
+        with schema_editor.connection.cursor() as cursor:
+            cursor.execute("DROP INDEX IF EXISTS core_curso_slug_3140ded6_like")
+            cursor.execute("ALTER TABLE core_curso DROP CONSTRAINT IF EXISTS core_curso_slug_3140ded6_uniq")
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -26,51 +34,85 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='curso',
-            name='slug',
-            field=models.SlugField(blank=True, help_text='Identificador único no URL (ex: reforma-tributaria)', max_length=255),
+        SeparateDatabaseAndState(
+            state_operations=migrations.AddField(
+                model_name='curso',
+                name='slug',
+                field=models.SlugField(blank=True, help_text='Identificador único no URL (ex: reforma-tributaria)', max_length=255),
+            ),
+            database_operations=[
+                migrations.RunSQL(
+                    sql="ALTER TABLE core_curso ADD COLUMN IF NOT EXISTS slug varchar(255) NOT NULL DEFAULT ''",
+                    reverse_sql="ALTER TABLE core_curso DROP COLUMN IF EXISTS slug",
+                ),
+            ],
         ),
         migrations.RunPython(populate_slugs, migrations.RunPython.noop),
-        migrations.AlterField(
-            model_name='curso',
-            name='slug',
-            field=models.SlugField(blank=True, help_text='Identificador único no URL (ex: reforma-tributaria)', max_length=255, unique=True),
-        ),
-        migrations.CreateModel(
-            name='Modulo',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('titulo', models.CharField(max_length=255)),
-                ('descricao', models.TextField(blank=True)),
-                ('ordem', models.PositiveIntegerField(default=0, verbose_name='Ordem')),
-                ('ativo', models.BooleanField(default=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('curso', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='modulos', to='core.curso')),
+        migrations.RunPython(drop_conflicting_slug_index, migrations.RunPython.noop),
+        SeparateDatabaseAndState(
+            state_operations=migrations.AlterField(
+                model_name='curso',
+                name='slug',
+                field=models.SlugField(blank=True, help_text='Identificador único no URL (ex: reforma-tributaria)', max_length=255, unique=True),
+            ),
+            database_operations=[
+                migrations.AlterField(
+                    model_name='curso',
+                    name='slug',
+                    field=models.SlugField(blank=True, help_text='Identificador único no URL (ex: reforma-tributaria)', max_length=255, unique=True),
+                ),
             ],
-            options={
-                'verbose_name': 'Módulo',
-                'verbose_name_plural': 'Módulos',
-                'ordering': ['ordem', 'id'],
-            },
         ),
-        migrations.CreateModel(
-            name='Material',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('titulo', models.CharField(max_length=255)),
-                ('arquivo', models.FileField(blank=True, null=True, upload_to='cursos/materiais/', verbose_name='Arquivo')),
-                ('url_externa', models.URLField(blank=True, help_text='Use quando o arquivo estiver hospedado em outro lugar.', verbose_name='URL externa')),
-                ('modalidade', models.CharField(choices=[('pdf', 'PDF'), ('xls', 'Excel'), ('xlsx', 'Excel (XLSX)'), ('zip', 'ZIP'), ('link', 'Link Externo')], default='pdf', max_length=10)),
-                ('ordem', models.PositiveIntegerField(default=0, verbose_name='Ordem')),
-                ('ativo', models.BooleanField(default=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('modulo', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='materiais', to='core.modulo')),
+        SeparateDatabaseAndState(
+            state_operations=migrations.CreateModel(
+                name='Modulo',
+                fields=[
+                    ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                    ('titulo', models.CharField(max_length=255)),
+                    ('descricao', models.TextField(blank=True)),
+                    ('ordem', models.PositiveIntegerField(default=0, verbose_name='Ordem')),
+                    ('ativo', models.BooleanField(default=True)),
+                    ('created_at', models.DateTimeField(auto_now_add=True)),
+                    ('curso', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='modulos', to='core.curso')),
+                ],
+                options={
+                    'verbose_name': 'Módulo',
+                    'verbose_name_plural': 'Módulos',
+                    'ordering': ['ordem', 'id'],
+                },
+            ),
+            database_operations=[
+                migrations.RunSQL(
+                    sql="CREATE TABLE IF NOT EXISTS core_modulo (id bigserial PRIMARY KEY, titulo varchar(255) NOT NULL, descricao text NOT NULL DEFAULT '', ordem integer NOT NULL DEFAULT 0, ativo boolean NOT NULL DEFAULT true, created_at timestamp with time zone NOT NULL DEFAULT now(), curso_id bigint NOT NULL REFERENCES core_curso(id) ON DELETE CASCADE)",
+                    reverse_sql="DROP TABLE IF EXISTS core_modulo CASCADE",
+                ),
             ],
-            options={
-                'verbose_name': 'Material',
-                'verbose_name_plural': 'Materiais',
-                'ordering': ['ordem', 'id'],
-            },
+        ),
+        SeparateDatabaseAndState(
+            state_operations=migrations.CreateModel(
+                name='Material',
+                fields=[
+                    ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                    ('titulo', models.CharField(max_length=255)),
+                    ('arquivo', models.FileField(blank=True, null=True, upload_to='cursos/materiais/', verbose_name='Arquivo')),
+                    ('url_externa', models.URLField(blank=True, help_text='Use quando o arquivo estiver hospedado em outro lugar.', verbose_name='URL externa')),
+                    ('modalidade', models.CharField(choices=[('pdf', 'PDF'), ('xls', 'Excel'), ('xlsx', 'Excel (XLSX)'), ('zip', 'ZIP'), ('link', 'Link Externo')], default='pdf', max_length=10)),
+                    ('ordem', models.PositiveIntegerField(default=0, verbose_name='Ordem')),
+                    ('ativo', models.BooleanField(default=True)),
+                    ('created_at', models.DateTimeField(auto_now_add=True)),
+                    ('modulo', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='materiais', to='core.modulo')),
+                ],
+                options={
+                    'verbose_name': 'Material',
+                    'verbose_name_plural': 'Materiais',
+                    'ordering': ['ordem', 'id'],
+                },
+            ),
+            database_operations=[
+                migrations.RunSQL(
+                    sql="CREATE TABLE IF NOT EXISTS core_material (id bigserial PRIMARY KEY, titulo varchar(255) NOT NULL, arquivo varchar(100) NULL, url_externa varchar(200) NOT NULL DEFAULT '', modalidade varchar(10) NOT NULL DEFAULT 'pdf', ordem integer NOT NULL DEFAULT 0, ativo boolean NOT NULL DEFAULT true, created_at timestamp with time zone NOT NULL DEFAULT now(), modulo_id bigint NOT NULL REFERENCES core_modulo(id) ON DELETE CASCADE)",
+                    reverse_sql="DROP TABLE IF EXISTS core_material CASCADE",
+                ),
+            ],
         ),
     ]
