@@ -653,41 +653,6 @@ from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from pathlib import Path
-import json
-
-@staff_member_required
-@require_POST
-def corrigir_texto(request):
-    try:
-        dados = json.loads(request.body)
-        texto = dados.get('texto', '').strip()
-    except (json.JSONDecodeError, AttributeError):
-        return JsonResponse({'erro': 'JSON inválido'}, status=400)
-
-    if not texto:
-        return JsonResponse({'erro': 'Texto vazio'}, status=400)
-
-    api_key = settings.GOOGLE_API_KEY
-    if not api_key:
-        return JsonResponse({'erro': 'Serviço de correção indisponível. Configure a GOOGLE_API_KEY.'}, status=503)
-
-    try:
-        from google import genai
-        client = genai.Client(api_key=api_key)
-        prompt = (
-            "Corrija o texto abaixo corrigindo erros de ortografia e gramática, "
-            "e reescreva de forma mais profissional. Mantenha o sentido original. "
-            "Responda APENAS com o texto corrigido, sem explicações.\n\n"
-            f"Texto: {texto}"
-        )
-        resposta = client.models.generate_content(
-            model='gemini-2.0-flash-lite',
-            contents=prompt,
-        )
-        texto_corrigido = resposta.text.strip()
-        return JsonResponse({'corrigido': texto_corrigido})
-    except Exception as e:
-        return JsonResponse({'erro': str(e)}, status=500)
 
 
 @api_view(['GET'])

@@ -254,5 +254,3 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
-# Google Gemini API - https://aistudio.google.com/apikey
-GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY', '')
