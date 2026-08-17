@@ -199,7 +199,7 @@ AWS_S3_ACCESS_KEY_ID = os.getenv('SUPABASE_S3_ACCESS_KEY_ID')
 AWS_S3_SECRET_ACCESS_KEY = os.getenv('SUPABASE_S3_SECRET_ACCESS_KEY')
 # django-storages 1.14 lê o bucket por AWS_STORAGE_BUCKET_NAME; mantemos também
 # AWS_S3_BUCKET_NAME para compatibilidade com a documentação antiga.
-AWS_S3_BUCKET_NAME = os.getenv('SUPABASE_S3_BUCKET_NAME', 'media')
+AWS_S3_BUCKET_NAME = os.getenv('SUPABASE_S3_BUCKET_NAME', 'Visao_cursos')
 AWS_STORAGE_BUCKET_NAME = AWS_S3_BUCKET_NAME
 AWS_S3_REGION_NAME = os.getenv('SUPABASE_S3_REGION_NAME', 'us-east-1')
 # ACL desabilitado: o S3 do Supabase não aceita x-amz-acl; o acesso público é

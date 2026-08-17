@@ -18,7 +18,7 @@ services:
       - key: SUPABASE_S3_SECRET_ACCESS_KEY
         sync: false
       - key: SUPABASE_S3_BUCKET_NAME
-        value: "media"
+        value: "Visao_cursos"
       - key: SUPABASE_S3_REGION_NAME
         value: "us-east-1"
       - key: ALLOWED_HOSTS
