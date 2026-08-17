@@ -31,7 +31,11 @@ SECRET_KEY = os.environ.get('SECRET_KEY', '')
 if not SECRET_KEY and not DEBUG:
     raise ValueError('SECRET_KEY must be set in production via environment variable.')
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',') if os.environ.get('ALLOWED_HOSTS') else ['localhost', '127.0.0.1']
+_raw_hosts = os.environ.get('ALLOWED_HOSTS', '').strip()
+if _raw_hosts:
+    ALLOWED_HOSTS = [h.strip() for h in _raw_hosts.split(',') if h.strip()]
+else:
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1', '*.onrender.com']
 
 RECAPTCHA_SECRET_KEY = os.environ.get('RECAPTCHA_SECRET_KEY', '')
 
@@ -213,12 +217,22 @@ if DEBUG:
 else:
     CORS_ALLOWED_ORIGINS = [
         'https://dashboard-visao.onrender.com',
-        'http://localhost:5173'
+        'https://visao-tributaria.vercel.app',
+        'https://academy.orcoma.com.br',
+        'https://dashboard.orcomacontabilidade.com.br',
+        'https://orc-academy.vercel.app',
+        'https://orcoma-academy.vercel.app',
+        'http://localhost:5173',
     ]
 CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = [
     'https://dashboard-visao.onrender.com',
+    'https://visao-tributaria.vercel.app',
+    'https://academy.orcoma.com.br',
+    'https://dashboard.orcomacontabilidade.com.br',
+    'https://orc-academy.vercel.app',
+    'https://orcoma-academy.vercel.app',
 ]
 
 # REST Framework
