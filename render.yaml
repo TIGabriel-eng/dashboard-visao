@@ -21,6 +21,10 @@ services:
         value: "dashboard-visao.onrender.com,visao-tributaria.vercel.app,localhost,127.0.0.1"
       - key: RECAPTCHA_SECRET_KEY
         sync: false
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
       - key: PYTHON_VERSION
         value: "3.12.0"
 

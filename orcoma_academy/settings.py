@@ -48,16 +48,20 @@ from django.dispatch import receiver
 
 @receiver(post_migrate)
 def ensure_admin_panel(sender, **kwargs):
-    if not DEBUG:
+    if sender.name not in ('django.contrib.admin', 'core'):
         return
     try:
         from django.contrib.auth import get_user_model
         User = get_user_model()
-        if sender.name in ('django.contrib.admin', 'core'):
-            user, _ = User.objects.get_or_create(username='admin')
-            if not user.is_staff:
-                user.is_staff = True
-                user.is_superuser = True
+        username = os.environ.get('ADMIN_USERNAME', 'admin')
+        password = os.environ.get('ADMIN_PASSWORD', '')
+        if password and not User.objects.filter(is_superuser=True).exists():
+            user, created = User.objects.get_or_create(
+                username=username,
+                defaults={'is_staff': True, 'is_superuser': True}
+            )
+            if created or not user.check_password(password):
+                user.set_password(password)
                 user.save()
     except Exception:
         pass
@@ -258,5 +262,22 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
+}
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+    },
 }
 
