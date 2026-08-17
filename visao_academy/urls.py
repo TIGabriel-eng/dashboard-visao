@@ -15,5 +15,5 @@ urlpatterns = [
     path('api/token/refresh/', CookieTokenRefreshView.as_view(), name='token_refresh'),
 ]
 
-if settings.DEBUG:
+if settings.DEBUG and settings.MEDIA_URL.startswith('/'):
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

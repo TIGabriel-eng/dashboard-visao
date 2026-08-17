@@ -13,8 +13,7 @@ whitenoise
 gunicorn==23.0.0
 djangorestframework
 Pillow>=10.0.0
-django-cloudinary-storage
-cloudinary
+django-storages[boto3]
 reportlab>=4.0.0
 django-apscheduler>=0.7.0
 argon2-cffi

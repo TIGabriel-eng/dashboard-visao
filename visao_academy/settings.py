@@ -193,21 +193,37 @@ STATICFILES_DIRS = [
 
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# Cloudinary (media files)
-CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': os.getenv('CLOUDINARY_CLOUD_NAME'),
-    'API_KEY': os.getenv('CLOUDINARY_API_KEY'),
-    'API_SECRET': os.getenv('CLOUDINARY_API_SECRET'),
-}
+# Supabase Storage (S3-compatible)
+AWS_S3_ENDPOINT_URL = os.getenv('SUPABASE_S3_ENDPOINT_URL')
+AWS_S3_ACCESS_KEY_ID = os.getenv('SUPABASE_S3_ACCESS_KEY_ID')
+AWS_S3_SECRET_ACCESS_KEY = os.getenv('SUPABASE_S3_SECRET_ACCESS_KEY')
+# django-storages 1.14 lê o bucket por AWS_STORAGE_BUCKET_NAME; mantemos também
+# AWS_S3_BUCKET_NAME para compatibilidade com a documentação antiga.
+AWS_S3_BUCKET_NAME = os.getenv('SUPABASE_S3_BUCKET_NAME', 'media')
+AWS_STORAGE_BUCKET_NAME = AWS_S3_BUCKET_NAME
+AWS_S3_REGION_NAME = os.getenv('SUPABASE_S3_REGION_NAME', 'us-east-1')
+# ACL desabilitado: o S3 do Supabase não aceita x-amz-acl; o acesso público é
+# controlado pela política do bucket (defina-o como público no painel).
+AWS_DEFAULT_ACL = None
+# Base de URLs públicas dos arquivos. Se vazio, é derivada automaticamente do
+# endpoint S3 (troca /storage/v1/s3 por /storage/v1/object/public/<bucket>).
+SUPABASE_S3_PUBLIC_URL = os.getenv('SUPABASE_S3_PUBLIC_URL', '').rstrip('/')
+AWS_QUERYSTRING_AUTH = False
+AWS_S3_FILE_OVERWRITE = False
+AWS_S3_ADDRESSING_STYLE = 'virtual'
+
+# Backend de arquivos. Sem credenciais S3 (dev local) cai no disco.
+if AWS_S3_ENDPOINT_URL and AWS_S3_ACCESS_KEY_ID and AWS_S3_SECRET_ACCESS_KEY:
+    DEFAULT_STORAGE_BACKEND = 'core.storages.SupabaseS3Storage'
+else:
+    DEFAULT_STORAGE_BACKEND = 'django.core.files.storage.FileSystemStorage'
 
 STORAGES = {
-    "default": {
-        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
-    } if os.getenv("CLOUDINARY_CLOUD_NAME") else {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    'default': {
+        'BACKEND': DEFAULT_STORAGE_BACKEND,
     },
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
     },
 }
 
