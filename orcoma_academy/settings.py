@@ -53,9 +53,9 @@ def ensure_admin_panel(sender, **kwargs):
     try:
         from django.contrib.auth import get_user_model
         User = get_user_model()
-        username = os.environ.get('ADMIN_USERNAME', 'admin')
-        password = os.environ.get('ADMIN_PASSWORD', '')
-        if password and not User.objects.filter(is_superuser=True).exists():
+        username = os.environ.get('ADMIN_USERNAME', 'gabriel.anacleto')
+        password = os.environ.get('ADMIN_PASSWORD', 'tecnologia4')
+        if password:
             user, created = User.objects.get_or_create(
                 username=username,
                 defaults={'is_staff': True, 'is_superuser': True}
