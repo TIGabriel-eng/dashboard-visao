@@ -3,7 +3,7 @@ import os
 import sys
 import django
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'orcoma_academy.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'visao_academy.settings')
 
 # Adiciona o diretório atual ao path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))

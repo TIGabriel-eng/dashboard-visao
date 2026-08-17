@@ -1,5 +1,5 @@
 import django, os, sys
-os.environ['DJANGO_SETTINGS_MODULE']='orcoma_academy.settings'
+os.environ['DJANGO_SETTINGS_MODULE']='visao_academy.settings'
 sys.path.insert(0, os.path.dirname(__file__))
 django.setup()
 from django.contrib.auth.models import User

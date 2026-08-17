@@ -4,7 +4,7 @@ import sys
 import django
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'orcoma_academy.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'visao_academy.settings')
 
 # Carrega o .env se existir
 from pathlib import Path
