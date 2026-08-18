@@ -37,4 +37,5 @@ urlpatterns = [
     path('busca/', views.busca, name='busca'),
     path('user-stats/', views.user_stats, name='user-stats'),
     path('logout/', views.logout_view, name='logout'),
+    path('onedrive/embed-url/', views.onedrive_embed_url, name='onedrive-embed-url'),
 ]

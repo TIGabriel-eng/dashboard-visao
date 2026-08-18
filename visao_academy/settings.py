@@ -201,7 +201,7 @@ CLOUDINARY_STORAGE = {
 }
 
 if CLOUDINARY_STORAGE['CLOUD_NAME'] and CLOUDINARY_STORAGE['API_KEY'] and CLOUDINARY_STORAGE['API_SECRET']:
-    DEFAULT_STORAGE_BACKEND = 'cloudinary_storage.storage.CloudinaryMediaStorage'
+    DEFAULT_STORAGE_BACKEND = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 else:
     DEFAULT_STORAGE_BACKEND = 'django.core.files.storage.FileSystemStorage'
 
@@ -217,6 +217,10 @@ STORAGES = {
 # Media files (uploads)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Limites de upload — aceitar vídeos grandes (até 500 MB)
+FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024   # 20 MB: acima disso vai para disco temporário (/tmp)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 250 * 1024 * 1024  # 250 MB: limite do body do POST
 
 # CORS
 if DEBUG:

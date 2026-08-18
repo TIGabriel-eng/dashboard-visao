@@ -1479,3 +1479,48 @@ def curtir_comentario(request, pk):
         'curtidas': comentario.curtido_por.count(),
         'curtido_por_mim': curtido,
     })
+
+
+from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+import requests as http_requests
+
+
+def _is_onedrive_url(url: str) -> bool:
+    return any(d in url for d in ('1drv.ms', 'onedrive.live.com', 'sharepoint.com'))
+
+
+def _build_onedrive_embed(url: str) -> str:
+    parsed = urlparse(url)
+    qs = parse_qs(parsed.query)
+
+    if 'resid' in qs and 'authkey' in qs:
+        resid = qs['resid'][0]
+        authkey = qs['authkey'][0]
+        return f'https://onedrive.live.com/embed?resid={resid}&authkey={authkey}&em=2'
+
+    if 'id' in qs:
+        item_id = qs['id'][0]
+        return f'https://onedrive.live.com/embed?resid={item_id}&em=2'
+
+    return url
+
+
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def onedrive_embed_url(request):
+    url = request.query_params.get('url', '').strip()
+    if not url:
+        return Response({'detail': 'Parâmetro "url" é obrigatório.'}, status=400)
+
+    if not _is_onedrive_url(url):
+        return Response({'detail': 'URL não é do OneDrive.'}, status=400)
+
+    try:
+        resp = http_requests.head(url, allow_redirects=True, timeout=10,
+                                  headers={'User-Agent': 'Mozilla/5.0'})
+        final_url = resp.url
+    except http_requests.RequestException:
+        final_url = url
+
+    embed_url = _build_onedrive_embed(final_url)
+    return Response({'embed_url': embed_url})

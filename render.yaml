@@ -11,20 +11,12 @@ services:
         value: "False"
       - key: DATABASE_URL
         sync: false
-      - key: SUPABASE_S3_ENDPOINT_URL
+      - key: CLOUDINARY_CLOUD_NAME
         sync: false
-      - key: SUPABASE_S3_ACCESS_KEY_ID
+      - key: CLOUDINARY_API_KEY
         sync: false
-      - key: SUPABASE_S3_SECRET_ACCESS_KEY
+      - key: CLOUDINARY_API_SECRET
         sync: false
-      - key: SUPABASE_S3_BUCKET_NAME
-        value: "Visao_cursos"
-      - key: SUPABASE_S3_REGION_NAME
-        value: "us-east-1"
-      - key: AWS_REQUEST_CHECKSUM_CALCULATION
-        value: "when_required"
-      - key: AWS_RESPONSE_CHECKSUM_VALIDATION
-        value: "when_required"
       - key: ALLOWED_HOSTS
         value: "dashboard-visao.onrender.com,visao-tributaria.vercel.app,localhost,127.0.0.1"
       - key: RECAPTCHA_SECRET_KEY
