@@ -21,12 +21,9 @@ class VideoSerializer(serializers.ModelSerializer):
         fields = ('id', 'titulo', 'arquivo_url', 'url_externa', 'modulo', 'ordem', 'ativo')
 
     def get_arquivo_url(self, obj):
-        """Retorna URL direta do vídeo (o S3 do Supabase já fecha absoluta)."""
+        """Retorna URL direta do vídeo."""
         if not obj.arquivo:
             return None
-        # O .url do SupabaseS3Storage já retorna a URL absoluta
-        # (storage/v1/object/public/<bucket>/...); FileSystemStorage é relativa
-        # e precisa ser prefixada com o domínio.
         url = obj.arquivo.url
         if url.startswith('http://') or url.startswith('https://'):
             return url

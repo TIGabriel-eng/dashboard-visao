@@ -193,28 +193,15 @@ STATICFILES_DIRS = [
 
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# Supabase Storage (S3-compatible)
-AWS_S3_ENDPOINT_URL = os.getenv('SUPABASE_S3_ENDPOINT_URL')
-AWS_S3_ACCESS_KEY_ID = os.getenv('SUPABASE_S3_ACCESS_KEY_ID')
-AWS_S3_SECRET_ACCESS_KEY = os.getenv('SUPABASE_S3_SECRET_ACCESS_KEY')
-# django-storages 1.14 lê o bucket por AWS_STORAGE_BUCKET_NAME; mantemos também
-# AWS_S3_BUCKET_NAME para compatibilidade com a documentação antiga.
-AWS_S3_BUCKET_NAME = os.getenv('SUPABASE_S3_BUCKET_NAME', 'Visao_cursos')
-AWS_STORAGE_BUCKET_NAME = AWS_S3_BUCKET_NAME
-AWS_S3_REGION_NAME = os.getenv('SUPABASE_S3_REGION_NAME', 'us-east-1')
-# ACL desabilitado: o S3 do Supabase não aceita x-amz-acl; o acesso público é
-# controlado pela política do bucket (defina-o como público no painel).
-AWS_DEFAULT_ACL = None
-# Base de URLs públicas dos arquivos. Se vazio, é derivada automaticamente do
-# endpoint S3 (troca /storage/v1/s3 por /storage/v1/object/public/<bucket>).
-SUPABASE_S3_PUBLIC_URL = os.getenv('SUPABASE_S3_PUBLIC_URL', '').rstrip('/')
-AWS_QUERYSTRING_AUTH = False
-AWS_S3_FILE_OVERWRITE = False
-AWS_S3_ADDRESSING_STYLE = 'virtual'
+# Cloudinary (armazenamento de mídia)
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': os.getenv('CLOUDINARY_CLOUD_NAME', ''),
+    'API_KEY': os.getenv('CLOUDINARY_API_KEY', ''),
+    'API_SECRET': os.getenv('CLOUDINARY_API_SECRET', ''),
+}
 
-# Backend de arquivos. Sem credenciais S3 (dev local) cai no disco.
-if AWS_S3_ENDPOINT_URL and AWS_S3_ACCESS_KEY_ID and AWS_S3_SECRET_ACCESS_KEY:
-    DEFAULT_STORAGE_BACKEND = 'core.storages.SupabaseS3Storage'
+if CLOUDINARY_STORAGE['CLOUD_NAME'] and CLOUDINARY_STORAGE['API_KEY'] and CLOUDINARY_STORAGE['API_SECRET']:
+    DEFAULT_STORAGE_BACKEND = 'cloudinary_storage.storage.CloudinaryMediaStorage'
 else:
     DEFAULT_STORAGE_BACKEND = 'django.core.files.storage.FileSystemStorage'
 
@@ -270,7 +257,9 @@ JWT_COOKIE = 'access_token'
 JWT_COOKIE_REFRESH = 'refresh_token'
 JWT_COOKIE_SECURE = not DEBUG
 JWT_COOKIE_HTTPONLY = True
-JWT_COOKIE_SAMESITE = 'None'
+# Em dev (http://localhost) o navegador rejeita SameSite=None sem Secure;
+# por isso em DEBUG usamos 'Lax' (mesmo site) e em produção 'None' (https).
+JWT_COOKIE_SAMESITE = 'Lax' if DEBUG else 'None'
 JWT_COOKIE_PATH = '/'
 
 SIMPLE_JWT = {

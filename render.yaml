@@ -21,6 +21,10 @@ services:
         value: "Visao_cursos"
       - key: SUPABASE_S3_REGION_NAME
         value: "us-east-1"
+      - key: AWS_REQUEST_CHECKSUM_CALCULATION
+        value: "when_required"
+      - key: AWS_RESPONSE_CHECKSUM_VALIDATION
+        value: "when_required"
       - key: ALLOWED_HOSTS
         value: "dashboard-visao.onrender.com,visao-tributaria.vercel.app,localhost,127.0.0.1"
       - key: RECAPTCHA_SECRET_KEY
