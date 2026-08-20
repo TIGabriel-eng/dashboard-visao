@@ -3,7 +3,7 @@ services:
     name: dashboard-visao-api
     runtime: python
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate --noinput
-    startCommand: gunicorn visao_academy.wsgi:application --workers 2 --threads 2 --timeout 120 --worker-class sync
+    startCommand: gunicorn visao_academy.wsgi:application --workers 2 --threads 4 --timeout 120 --worker-class gthread --max-requests 500 --max-requests-jitter 50 --preload
     envVars:
       - key: SECRET_KEY
         sync: false
