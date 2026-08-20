@@ -22,17 +22,17 @@ ws.append(headers)
 
 # Exemplos de dados
 exemplos = [
-    ['joao.silva', 'joao@empresa.com', 'João', 'Silva', 'cliente_orcoma', 
+    ['joao.silva', 'joao@empresa.com', 'João', 'Silva', 'cliente_vex', 
      'Empresa ABC', '12.345.678/0001-90', '(11)98765-4321', 'Analista', 'sao_paulo', 'mei', True],
     
-    ['maria.souza', 'maria@empresa.com', 'Maria', 'Souza', 'empresario', 
+    ['maria.souza', 'maria@empresa.com', 'Maria', 'Souza', 'empresário', 
      'Empresa XYZ', '98.765.432/0001-10', '(11)91234-5678', 'Diretora', 'salvador', 'me', True],
     
     ['pedro.costa', 'pedro@empresa.com', 'Pedro', 'Costa', 'cliente_equipe', 
      'Empresa 123', '11.222.333/0001-44', '(11)99999-8888', 'Gerente', 'maracas', '', False],
     
-    ['ana.oliveira', 'ana@empresa.com', 'Ana', 'Oliveira', 'colaborador_orcoma', 
-     'Orcoma', '00.000.000/0001-00', '(71)3333-4444', 'Colaborador', '', '', False],
+    ['ana.oliveira', 'ana@empresa.com', 'Ana', 'Oliveira', 'colaborador_vex', 
+     'Visão Tributária', '00.000.000/0001-00', '(71)3333-4444', 'Colaborador', '', '', False],
 ]
 
 for exemplo in exemplos:

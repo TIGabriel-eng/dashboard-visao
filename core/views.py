@@ -91,7 +91,7 @@ class CursoViewSet(viewsets.ModelViewSet):
                 from core.models import Ambiente
                 qs = Ambiente.objects.filter(ativo=True)
                 if role == 'cliente_premium':
-                    qs = qs.exclude(nome__iexact='Academy Orcomakers')
+                    qs = qs.exclude(nome__iexact='Academy Vex Visioners')
                 academias_ids = list(qs.values_list('id', flat=True))
             else:
                 from core.services.acesso import PERMISSOES_PAPEL

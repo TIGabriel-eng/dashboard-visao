@@ -96,7 +96,7 @@ class Command(BaseCommand):
                 email = row[col_map['email']]
                 first_name = row[col_map.get('first_name', 0)] or ''
                 last_name = row[col_map.get('last_name', 0)] or ''
-                role = row[col_map.get('role', 0)] or 'cliente_orcoma'
+                role = row[col_map.get('role', 0)] or 'cliente_vex'
                 empresa = row[col_map.get('empresa', 0)] or ''
                 cnpj = row[col_map.get('cnpj', 0)] or ''
                 telefone = row[col_map.get('telefone', 0)] or ''

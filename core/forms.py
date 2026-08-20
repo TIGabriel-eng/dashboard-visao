@@ -93,7 +93,7 @@ class MembroOrcomaAddForm(UserCreationForm):
         return user
 
 
-CLIENTE_ROLE_CHOICES = [c for c in Perfil.ROLE_CHOICES if c[0] in ('cliente_orcoma', 'cliente_premium', 'empresario', 'cliente_equipe', 'visitor')]
+CLIENTE_ROLE_CHOICES = [c for c in Perfil.ROLE_CHOICES if c[0] in ('cliente_vex', 'cliente_premium', 'empresário', 'cliente_equipe', 'visitor')]
 
 
 class ClienteAddForm(UserCreationForm):
@@ -118,7 +118,7 @@ class ClienteAddForm(UserCreationForm):
     role = forms.ChoiceField(
         label='Perfil',
         choices=CLIENTE_ROLE_CHOICES,
-        initial='cliente_orcoma',
+        initial='cliente_vex',
     )
     planos = forms.ModelMultipleChoiceField(
         label='Planos',
@@ -156,7 +156,7 @@ class ClienteAddForm(UserCreationForm):
                     'is_empresario': self.cleaned_data.get('is_empresario', False),
                     'cnpj': self.cleaned_data.get('cnpj', ''),
                     'regime_federal': self.cleaned_data.get('regime_federal', ''),
-                    'role': self.cleaned_data.get('role', 'cliente_orcoma'),
+                    'role': self.cleaned_data.get('role', 'cliente_vex'),
                     'telefone': self.cleaned_data.get('telefone', ''),
                 },
             )

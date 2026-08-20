@@ -77,7 +77,7 @@ def processar_arquivo_excel(arquivo, planilha_nome='Sheet1', criar_usuarios=Fals
             email = row[col_map['email']]
             first_name = row[col_map.get('first_name')] or '' if 'first_name' in col_map else ''
             last_name = row[col_map.get('last_name')] or '' if 'last_name' in col_map else ''
-            role = row[col_map.get('role')] or 'cliente_orcoma' if 'role' in col_map else 'cliente_orcoma'
+            role = row[col_map.get('role')] or 'cliente_vex' if 'role' in col_map else 'cliente_vex'
             empresa = row[col_map.get('empresa')] or '' if 'empresa' in col_map else ''
             cnpj = row[col_map.get('cnpj')] or '' if 'cnpj' in col_map else ''
             telefone = row[col_map.get('telefone')] or '' if 'telefone' in col_map else ''

@@ -14,10 +14,10 @@ def setup_acesso_role_academia():
         return
 
     MAPPING = {
-        'cliente_orcoma': ['Academy Contábil', 'Academy Gestão Empresarial'],
-        'empresario': ['Academy Gestão Empresarial'],
+        'cliente_vex': ['Academy Vex', 'Academy Empresarial'],
+        'empresário': ['Academy Empresarial'],
         'cliente_equipe': ['Academy Time'],
-        'colaborador_orcoma': ['Academy Orcomakers'],
+        'colaborador_vex': ['Academy Vex Visioners'],
         # admin e cliente_premium não precisam de entrada aqui,
         # pois o código já trata como acesso total.
     }

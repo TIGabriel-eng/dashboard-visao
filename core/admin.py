@@ -445,8 +445,8 @@ class ClienteAdmin(BaseUserAdmin):
         return HttpResponseRedirect(reverse('admin:core_membroorcoma_changelist'))
 
 
-STAFF_ROLES = ('admin', 'colaborador_orcoma', 'gestor_orcoma')
-CLIENT_ROLES = ('cliente_premium', 'cliente_orcoma', 'empresario', 'cliente_equipe', 'visitor')
+STAFF_ROLES = ('admin', 'colaborador_vex', 'gestor_orcoma')
+CLIENT_ROLES = ('cliente_premium', 'cliente_vex', 'empresário', 'cliente_equipe', 'visitor')
 
 
 @admin.register(MembroOrcoma)
@@ -1228,9 +1228,9 @@ class PlanoAdmin(admin.ModelAdmin):
 
     def get_default_ambientes(self, plano):
         if plano.nome.lower() == 'plano business':
-            return Ambiente.objects.filter(nome__in=['Academy Contábil', 'Academy Gestão Empresarial'])
+            return Ambiente.objects.filter(nome__in=['Academy Vex', 'Academy Empresarial'])
         if plano.nome.lower() == 'plano team':
-            return Ambiente.objects.filter(nome__in=['Academy Orcomakers', 'Academy Team'])
+            return Ambiente.objects.filter(nome__in=['Academy Vex Visioners', 'Academy Time'])
         if plano.nome.lower() == 'plano premium':
             return Ambiente.objects.all()
         return Ambiente.objects.none()

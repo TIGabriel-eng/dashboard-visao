@@ -476,10 +476,10 @@ class Perfil(models.Model):
     ROLE_CHOICES = [
         ('admin', 'Administrador'),
         ('cliente_premium', 'Cliente Premium'),
-        ('cliente_orcoma', 'Cliente Orcoma'),
-        ('empresario', 'Empresário Não Cliente'),
-        ('cliente_equipe', 'Cliente Equipe'),
-        ('colaborador_orcoma', 'Colaborador Orcoma'),
+        ('cliente_vex', 'Cliente Vex'),
+        ('empresário', 'Empresário'),
+        ('cliente_equipe', 'Cliente Time'),
+        ('colaborador_vex', 'Colaborador Visão Tributária'),
         ('gestor_orcoma', 'Gestor Orcoma (interno)'),
         ('visitor', 'Visitante'),
     ]
@@ -510,7 +510,7 @@ class Perfil(models.Model):
     ]
 
     usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='perfil')
-    role = models.CharField(max_length=30, choices=ROLE_CHOICES, default='cliente_orcoma', db_index=True)
+    role = models.CharField(max_length=30, choices=ROLE_CHOICES, default='cliente_vex', db_index=True)
     planos = models.ManyToManyField(Plano, blank=True, related_name='perfis')
     empresa = models.CharField(max_length=200, blank=True, verbose_name='Empresa')
     unidade = models.CharField(max_length=30, choices=UNIDADE_CHOICES, blank=True, verbose_name='Unidade')

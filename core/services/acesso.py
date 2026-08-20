@@ -6,12 +6,12 @@ from core.models import Ambiente, AcessoRoleAcademia, Perfil
 ROLES_ACESSO_TOTAL = {'admin', 'gestor_orcoma', 'cliente_premium'}
 
 PERMISSOES_PAPEL = {
-    'cliente_orcoma': ['Academy Contábil', 'Academy Gestão Empresarial'],
-    'empresario': ['Academy Gestão Empresarial'],
+    'cliente_vex': ['Academy Vex', 'Academy Empresarial'],
+    'empresário': ['Academy Empresarial'],
     'cliente_equipe': ['Academy Time'],
-    'colaborador_orcoma': ['Academy Orcomakers'],
+    'colaborador_vex': ['Academy Vex Visioners'],
     'admin': None,  # acesso total
-    'cliente_premium': None,  # acesso total menos Academy Orcomakers
+    'cliente_premium': None,  # acesso total menos Academy Vex Visioners
 }
 
 
@@ -32,7 +32,7 @@ def get_academias_permitidas(user):
     if role in ROLES_ACESSO_TOTAL:
         qs = Ambiente.objects.filter(ativo=True)
         if role == 'cliente_premium':
-            qs = qs.exclude(nome__iexact='Academy Orcomakers')
+            qs = qs.exclude(nome__iexact='Academy Vex Visioners')
         return qs
 
     nomes_permitidos = PERMISSOES_PAPEL.get(role, [])
@@ -104,7 +104,7 @@ def get_academias_permitidas_para_role(role):
     if role in ROLES_ACESSO_TOTAL:
         qs = Ambiente.objects.filter(ativo=True)
         if role == 'cliente_premium':
-            qs = qs.exclude(nome__iexact='Academy Orcomakers')
+            qs = qs.exclude(nome__iexact='Academy Vex Visioners')
         return qs
     nomes_permitidos = PERMISSOES_PAPEL.get(role, [])
     if not nomes_permitidos:

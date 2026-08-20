@@ -3,10 +3,10 @@ from core.models import AcessoRoleAcademia, Ambiente
 
 
 MAPPING = {
-    'cliente_orcoma': ['Academy Contábil', 'Academy Gestão Empresarial'],
-    'empresario': ['Academy Gestão Empresarial'],
+    'cliente_vex': ['Academy Vex', 'Academy Empresarial'],
+    'empresário': ['Academy Empresarial'],
     'cliente_equipe': ['Academy Time'],
-    'colaborador_orcoma': ['Academy Orcomakers'],
+    'colaborador_vex': ['Academy Vex Visioners'],
 }
 
 
