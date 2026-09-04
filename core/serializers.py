@@ -8,7 +8,7 @@ from .models import (
     Curso, Trilha, Evento, Novidade, LogAtividade, Perfil, Matricula,
     FormacaoAcademica, Habilidade, Video, Modulo, Material,
     Certificado, MetaSemanal, Avaliacao, Comentario, Notificacao,
-    Ambiente,
+    Ambiente, Quiz, Pergunta, Alternativa, QuizResultado,
 )
 from core.services.acesso import user_can_access_curso, get_user_role
 
@@ -652,3 +652,67 @@ class NotificacaoSerializer(serializers.ModelSerializer):
         model = Notificacao
         fields = ('id', 'titulo', 'mensagem', 'tipo', 'lida', 'link', 'created_at')
         read_only_fields = ('id', 'created_at')
+
+
+class AlternativaAlunoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Alternativa
+        fields = ('id', 'texto')
+
+
+class PerguntaAlunoSerializer(serializers.ModelSerializer):
+    alternativas = AlternativaAlunoSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Pergunta
+        fields = ('id', 'enunciado', 'alternativas')
+
+
+class QuizAlunoSerializer(serializers.ModelSerializer):
+    perguntas = PerguntaAlunoSerializer(many=True, read_only=True)
+    video_id = serializers.IntegerField(source='video.id', read_only=True, allow_null=True)
+    curso_id = serializers.IntegerField(source='curso.id', read_only=True, allow_null=True)
+
+    class Meta:
+        model = Quiz
+        fields = ('id', 'titulo', 'descricao', 'video_id', 'curso_id', 'perguntas')
+
+
+class QuizRespostaItemSerializer(serializers.Serializer):
+    pergunta_id = serializers.IntegerField()
+    alternativa_id = serializers.IntegerField()
+
+
+class QuizRespostaSerializer(serializers.Serializer):
+    respostas = QuizRespostaItemSerializer(many=True, min_length=1)
+
+    def __init__(self, *args, quiz=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.quiz = quiz
+
+    def validate_respostas(self, value):
+        if self.quiz is None:
+            raise serializers.ValidationError('Quiz não identificado.')
+        perguntas_ids = set(self.quiz.perguntas.values_list('id', flat=True))
+        if len(value) > len(perguntas_ids):
+            raise serializers.ValidationError('Há mais respostas do que perguntas no quiz.')
+        for item in value:
+            if item['pergunta_id'] not in perguntas_ids:
+                raise serializers.ValidationError(
+                    f'Pergunta {item["pergunta_id"]} não pertence a este quiz.'
+                )
+        if len({item['pergunta_id'] for item in value}) != len(value):
+            raise serializers.ValidationError('Não é permitido responder a mesma pergunta duas vezes.')
+        return value
+
+
+class QuizResultadoSerializer(serializers.ModelSerializer):
+    questoes = serializers.SerializerMethodField()
+
+    class Meta:
+        model = QuizResultado
+        fields = ('id', 'quiz', 'nota', 'acertos', 'total', 'aprovado', 'questoes', 'tentado_em')
+        read_only_fields = fields
+
+    def get_questoes(self, obj):
+        return obj.respostas if isinstance(obj.respostas, list) else []

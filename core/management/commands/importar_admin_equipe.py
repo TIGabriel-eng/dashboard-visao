@@ -6,6 +6,7 @@ from django.core.management.base import BaseCommand
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User
 from core.models import Perfil
+from core.forms import EMPRESA_PADRAO, CNPJ_PADRAO
 
 
 DATA_FILE = os.path.join(
@@ -59,7 +60,8 @@ class Command(BaseCommand):
 
                         perfil = user.perfil
                         perfil.role = 'admin'
-                        perfil.empresa = 'Orcoma'
+                        perfil.empresa = EMPRESA_PADRAO
+                        perfil.cnpj = CNPJ_PADRAO
                         perfil.cargo = data.get('cargo', '')
                         perfil.unidade = data.get('unidade', '')
                         perfil.save()
@@ -84,7 +86,8 @@ class Command(BaseCommand):
 
                 perfil = user.perfil
                 perfil.role = 'admin'
-                perfil.empresa = 'Orcoma'
+                perfil.empresa = EMPRESA_PADRAO
+                perfil.cnpj = CNPJ_PADRAO
                 perfil.cargo = data.get('cargo', '')
                 perfil.unidade = data.get('unidade', '')
                 perfil.save()

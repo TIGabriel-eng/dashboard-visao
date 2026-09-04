@@ -38,4 +38,8 @@ urlpatterns = [
     path('user-stats/', views.user_stats, name='user-stats'),
     path('logout/', views.logout_view, name='logout'),
     path('onedrive/embed-url/', views.onedrive_embed_url, name='onedrive-embed-url'),
+    path('quizzes/video/<int:video_id>/', views.quiz_por_video, name='quiz-por-video'),
+    path('quizzes/curso/<int:curso_id>/', views.quiz_por_curso, name='quiz-por-curso'),
+    path('quizzes/<int:quiz_id>/responder/', views.responder_quiz, name='responder-quiz'),
+    path('quizzes/<int:quiz_id>/resultados/', views.resultados_quiz, name='resultados-quiz'),
 ]

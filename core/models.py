@@ -662,6 +662,116 @@ class Comentario(models.Model):
         return f'{self.usuario.username} - {self.modulo.titulo} - {self.texto[:30]}'
 
 
+class Quiz(models.Model):
+    """Quiz vinculado a um vídeo (pós-vídeo) ou a um curso (prova final)."""
+    titulo = models.CharField(max_length=255, verbose_name='Título')
+    descricao = models.TextField(blank=True, verbose_name='Descrição')
+    video = models.ForeignKey(
+        Video, on_delete=models.CASCADE, related_name='quizzes',
+        verbose_name='Vídeo',
+        help_text='Quiz aparecerá para o aluno logo após este vídeo.',
+        null=True, blank=True,
+    )
+    curso = models.ForeignKey(
+        Curso, on_delete=models.CASCADE, related_name='quizzes',
+        verbose_name='Curso (prova final)',
+        help_text='Defina o curso para tornar este quiz uma prova final. Use OU o vídeo, OU o curso.',
+        null=True, blank=True,
+    )
+    limite_perguntas = models.PositiveIntegerField(
+        default=5, verbose_name='Limite de perguntas',
+        help_text='Número máximo de perguntas deste quiz.',
+    )
+    nota_minima = models.PositiveIntegerField(
+        default=70, verbose_name='Nota mínima (%)',
+        help_text='Percentual mínimo para aprovação (0–100).',
+    )
+    ativo = models.BooleanField(default=True, verbose_name='Ativo')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Quiz'
+        verbose_name_plural = 'Quizzes'
+        ordering = ['curso', 'video', 'created_at']
+        constraints = [
+            models.CheckConstraint(
+                condition=(models.Q(video__isnull=False, curso__isnull=True)
+                           | models.Q(video__isnull=True, curso__isnull=False)),
+                name='quiz_deve_ter_video_ou_curso',
+            ),
+        ]
+
+    def __str__(self):
+        if self.curso:
+            return f'{self.titulo} — Prova final ({self.curso.titulo})'
+        return f'{self.titulo} — {self.video}'
+
+    @property
+    def is_prova_final(self):
+        return self.curso_id is not None
+
+    @property
+    def total_perguntas(self):
+        return self.perguntas.count()
+
+
+class Pergunta(models.Model):
+    """Pergunta dentro de um quiz."""
+    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='perguntas')
+    enunciado = models.TextField(verbose_name='Enunciado')
+    ordem = models.PositiveIntegerField(default=0, verbose_name='Ordem')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Pergunta'
+        verbose_name_plural = 'Perguntas'
+        ordering = ['ordem', 'id']
+
+    def __str__(self):
+        return f'Quiz {self.quiz_id} — #{self.ordem}: {self.enunciado[:60]}'
+
+
+class Alternativa(models.Model):
+    """Alternativa de resposta dentro de uma pergunta."""
+    pergunta = models.ForeignKey(Pergunta, on_delete=models.CASCADE, related_name='alternativas')
+    texto = models.CharField(max_length=500, verbose_name='Texto')
+    correta = models.BooleanField(default=False, verbose_name='Correta?')
+    ordem = models.PositiveIntegerField(default=0, verbose_name='Ordem')
+
+    class Meta:
+        verbose_name = 'Alternativa'
+        verbose_name_plural = 'Alternativas'
+        ordering = ['ordem', 'id']
+
+    def __str__(self):
+        mark = '✓' if self.correta else ''
+        return f'{self.texto[:50]} {mark}'
+
+
+class QuizResultado(models.Model):
+    """Registro de tentativa de um aluno em um quiz."""
+    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='resultados')
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='quiz_resultados')
+    nota = models.FloatField(verbose_name='Nota (0-1)')
+    acertos = models.PositiveIntegerField(verbose_name='Acertos')
+    total = models.PositiveIntegerField(verbose_name='Total de perguntas')
+    aprovado = models.BooleanField(verbose_name='Aprovado')
+    respostas = models.JSONField(
+        default=list, blank=True,
+        help_text='Lista de {pergunta_id, alternativa_id, correta_id, acertou}.',
+    )
+    tentado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Resultado de Quiz'
+        verbose_name_plural = 'Resultados de Quizzes'
+        ordering = ['-tentado_em']
+
+    def __str__(self):
+        status = 'Aprovado' if self.aprovado else 'Reprovado'
+        return f'{self.usuario} — {self.quiz.titulo} — {status} ({self.nota:.0%})'
+
+
 @receiver(post_save, sender=User)
 def criar_perfil_usuario(sender, instance, created, **kwargs):
     if created:

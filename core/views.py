@@ -1043,6 +1043,7 @@ def cursos_recomendados(request):
     ambiente_id = request.query_params.get('ambiente')
     user = request.user if request.user.is_authenticated else None
     qs = Curso.objects.filter(is_recomendado=True, status='publicado')
+    qs = filtrar_cursos_acessiveis(qs, user)
     if ambiente_id:
         qs = qs.filter(Q(ambiente_id=ambiente_id) | Q(academias_extras__id=ambiente_id))
     if user:
@@ -1483,6 +1484,172 @@ def curtir_comentario(request, pk):
 
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 import requests as http_requests
+
+
+# ──────────────────────────────────────────────────────
+# QUIZ — Endpoints
+# ──────────────────────────────────────────────────────
+
+from .models import Quiz, Pergunta, Alternativa, QuizResultado
+from .serializers import (
+    QuizAlunoSerializer, QuizRespostaSerializer, QuizResultadoSerializer,
+)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def quiz_por_video(request, video_id):
+    """Retorna o quiz pós-vídeo (se existir) com perguntas e alternativas."""
+    try:
+        video = Video.objects.select_related('curso').get(pk=video_id)
+    except Video.DoesNotExist:
+        return Response({'detail': 'Vídeo não encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if not user_can_access_curso(video.curso, request.user):
+        return Response({'detail': 'Sem permissão.'}, status=status.HTTP_403_FORBIDDEN)
+
+    quizzes = (
+        Quiz.objects
+        .filter(video=video, ativo=True)
+        .order_by('created_at', 'id')
+        .prefetch_related('perguntas__alternativas')
+    )
+    if not quizzes.exists():
+        return Response(None)
+
+    serializer = QuizAlunoSerializer(quizzes, many=True, context={'request': request})
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def quiz_por_curso(request, curso_id):
+    """Retorna a prova final do curso (se existir)."""
+    try:
+        curso = Curso.objects.get(pk=curso_id)
+    except Curso.DoesNotExist:
+        return Response({'detail': 'Curso não encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if not user_can_access_curso(curso, request.user):
+        return Response({'detail': 'Sem permissão.'}, status=status.HTTP_403_FORBIDDEN)
+
+    quiz = (
+        Quiz.objects
+        .filter(curso=curso, ativo=True)
+        .prefetch_related('perguntas__alternativas')
+        .first()
+    )
+    if not quiz:
+        return Response(None)
+
+    serializer = QuizAlunoSerializer(quiz, context={'request': request})
+    return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def responder_quiz(request, quiz_id):
+    """Submete respostas do aluno, calcula nota e registra resultado."""
+    try:
+        quiz = Quiz.objects.select_related('curso', 'video').prefetch_related('perguntas__alternativas').get(pk=quiz_id)
+    except Quiz.DoesNotExist:
+        return Response({'detail': 'Quiz não encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if not quiz.ativo:
+        return Response({'detail': 'Este quiz não está ativo.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if quiz.curso_id and not user_can_access_curso(quiz.curso, request.user):
+        return Response({'detail': 'Sem permissão.'}, status=status.HTTP_403_FORBIDDEN)
+    if quiz.video_id:
+        if not user_can_access_curso(quiz.video.curso, request.user):
+            return Response({'detail': 'Sem permissão.'}, status=status.HTTP_403_FORBIDDEN)
+
+    serializer = QuizRespostaSerializer(data=request.data, quiz=quiz)
+    serializer.is_valid(raise_exception=True)
+
+    respostas = serializer.validated_data['respostas']
+    total = len(respostas)
+    acertos = 0
+    questoes = []
+
+    for item in respostas:
+        pergunta_id = item['pergunta_id']
+        alternativa_escolhida_id = item['alternativa_id']
+
+        try:
+            pergunta = quiz.perguntas.get(pk=pergunta_id)
+            alt_correta = pergunta.alternativas.filter(correta=True).first()
+            correta_id = alt_correta.id if alt_correta else None
+            acertou = (alt_correta is not None and alt_correta.id == alternativa_escolhida_id)
+        except Pergunta.DoesNotExist:
+            correta_id = None
+            acertou = False
+
+        if acertou:
+            acertos += 1
+
+        questoes.append({
+            'pergunta_id': pergunta_id,
+            'alternativa_id': alternativa_escolhida_id,
+            'correta_id': correta_id,
+            'acertou': acertou,
+        })
+
+    nota = acertos / total if total > 0 else 0
+    aprovado = nota >= (quiz.nota_minima / 100)
+
+    resultado = QuizResultado.objects.create(
+        quiz=quiz,
+        usuario=request.user,
+        nota=nota,
+        acertos=acertos,
+        total=total,
+        aprovado=aprovado,
+        respostas=questoes,
+    )
+
+    if quiz.is_prova_final and aprovado:
+        matricula, _ = Matricula.objects.get_or_create(
+            usuario=request.user,
+            curso=quiz.curso,
+            defaults={
+                'progresso': 100,
+                'concluido': True,
+                'concluido_em': timezone.now(),
+            },
+        )
+        if not matricula.concluido:
+            matricula.progresso = 100
+            matricula.concluido = True
+            matricula.concluido_em = timezone.now()
+            matricula.save()
+
+        Certificado.objects.get_or_create(matricula=matricula)
+
+        Notificacao.objects.create(
+            usuario=request.user,
+            titulo='Prova Final Aprovada!',
+            mensagem=f'Parabéns! Você passou na prova final de "{quiz.curso.titulo}". Seu certificado está disponível.',
+            tipo='curso_concluido',
+            link='/certificados',
+        )
+
+    result_serializer = QuizResultadoSerializer(resultado)
+    return Response(result_serializer.data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def resultados_quiz(request, quiz_id):
+    """Retorna o histórico de tentativas do aluno em um quiz."""
+    try:
+        quiz = Quiz.objects.get(pk=quiz_id)
+    except Quiz.DoesNotExist:
+        return Response({'detail': 'Quiz não encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+    resultados = QuizResultado.objects.filter(quiz=quiz, usuario=request.user)
+    serializer = QuizResultadoSerializer(resultados, many=True)
+    return Response(serializer.data)
 
 
 def _is_onedrive_url(url: str) -> bool:

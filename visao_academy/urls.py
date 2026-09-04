@@ -8,6 +8,7 @@ from core.views import CustomTokenObtainPairView, CookieTokenRefreshView, admin_
 urlpatterns = [
     path('', lambda request: redirect('/admin/login/?next=/admin/'), name='root'),
     path('admin/', admin.site.urls),
+    path('_nested_admin/', include('nested_admin.urls')),
     path('admin/backup-database/', admin_backup_database, name='backup_database'),
     path('admin/restore-database/', admin_restore_database, name='restore_database'),
     path('api/', include('core.urls')),

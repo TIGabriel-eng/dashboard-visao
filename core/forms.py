@@ -8,7 +8,8 @@ from django.utils.html import format_html
 from core.models import Perfil, Curso, Plano, Trilha
 from core.services.acesso import validar_role_planos, get_academias_permitidas_para_role
 
-EMPRESA_PADRAO = 'Orcoma-Org. Comercial e Serviços'
+EMPRESA_PADRAO = 'VISAO TRIBUTARIA PLANEJAMENTO EMPRESARIAL LTDA - ME'
+CNPJ_PADRAO = '35.829.510/0001-50'
 
 
 class ImportarUsuariosForm(forms.Form):
@@ -84,6 +85,7 @@ class MembroOrcomaAddForm(UserCreationForm):
                 usuario=user,
                 defaults={
                     'empresa': self.cleaned_data.get('empresa', EMPRESA_PADRAO),
+                    'cnpj': CNPJ_PADRAO,
                     'unidade': self.cleaned_data.get('unidade', ''),
                     'role': 'admin',
                     'cargo': self.cleaned_data.get('cargo', ''),

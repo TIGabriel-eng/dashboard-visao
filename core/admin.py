@@ -1,5 +1,7 @@
 import threading
 
+import nested_admin
+
 from django.contrib import admin, messages
 from django.contrib.auth.models import User, Group, Permission
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin, GroupAdmin
@@ -11,8 +13,8 @@ from django.urls import path, reverse
 from django.db.models import Count, Q
 from django.contrib.auth import get_user_model
 from django import forms
-from .models import Curso, Video, Modulo, Material, Trilha, Evento, EventoLeitura, Novidade, LogAtividade, Cliente, MembroOrcoma, CursoVisualizacao, Matricula, Plano, Ambiente, Perfil, Permissao, FormacaoAcademica, Habilidade, MetaSemanal, RegraAtribuicaoPlano, AcessoRoleAcademia, Comentario
-from .forms import CursoAdminForm, MembroOrcomaAddForm, ClienteAddForm, ImportarUsuariosForm, TrilhaAdminForm, EMPRESA_PADRAO
+from .models import Curso, Video, Modulo, Material, Trilha, Evento, EventoLeitura, Novidade, LogAtividade, Cliente, MembroOrcoma, CursoVisualizacao, Matricula, Plano, Ambiente, Perfil, Permissao, FormacaoAcademica, Habilidade, MetaSemanal, RegraAtribuicaoPlano, AcessoRoleAcademia, Comentario, Quiz, Pergunta, Alternativa, QuizResultado
+from .forms import CursoAdminForm, MembroOrcomaAddForm, ClienteAddForm, ImportarUsuariosForm, TrilhaAdminForm, EMPRESA_PADRAO, CNPJ_PADRAO
 from .services.importacao import processar_arquivo_excel, gerar_template_bytes, gerar_relatorio_bytes
 
 User = get_user_model()
@@ -131,7 +133,7 @@ class PermissaoAdmin(GroupAdmin):
         'Conteúdo': {
             'icon': 'fa-solid fa-book-open',
             'slug': 'conteudo',
-            'models': ['curso', 'trilha', 'novidade'],
+            'models': ['curso', 'trilha', 'novidade', 'quiz', 'pergunta', 'alternativa', 'quizresultado'],
         },
         'Moderadores': {
             'icon': 'fa-solid fa-user-shield',
@@ -573,6 +575,7 @@ class MembroOrcomaAdmin(BaseUserAdmin):
                 usuario=user,
                 defaults={
                     'empresa': form.cleaned_data.get('empresa', EMPRESA_PADRAO),
+                    'cnpj': CNPJ_PADRAO,
                     'unidade': form.cleaned_data.get('unidade', ''),
                     'role': 'admin',
                     'cargo': form.cleaned_data.get('cargo', ''),
@@ -974,12 +977,37 @@ class MembroOrcomaAdmin(BaseUserAdmin):
         return render(request, 'admin/core/membro_orcoma/excluir_massa.html', context)
 
 
-class VideoInline(admin.StackedInline):
+class AlternativaNestedInline(nested_admin.NestedTabularInline):
+    model = Alternativa
+    extra = 1
+    fields = ('texto', 'correta', 'ordem')
+    ordering = ('ordem',)
+
+
+class PerguntaNestedInline(nested_admin.NestedStackedInline):
+    model = Pergunta
+    extra = 1
+    can_delete = True
+    fields = ('enunciado', 'ordem')
+    ordering = ('ordem',)
+    inlines = [AlternativaNestedInline]
+
+
+class QuizNestedInline(nested_admin.NestedStackedInline):
+    model = Quiz
+    extra = 0
+    can_delete = True
+    fields = ('titulo', 'descricao', 'nota_minima', 'limite_perguntas', 'ativo')
+    inlines = [PerguntaNestedInline]
+
+
+class VideoNestedInline(nested_admin.NestedStackedInline):
     model = Video
     extra = 0
     can_delete = True
     fields = ('modulo', 'titulo', 'arquivo', 'url_externa', 'ordem', 'ativo')
     ordering = ('ordem',)
+    inlines = [QuizNestedInline]
 
 
 class MaterialInline(admin.TabularInline):
@@ -989,18 +1017,26 @@ class MaterialInline(admin.TabularInline):
     ordering = ('ordem',)
 
 
-class ModuloInline(admin.StackedInline):
+class MaterialNestedInline(nested_admin.NestedTabularInline):
+    model = Material
+    extra = 0
+    fields = ('titulo', 'arquivo', 'url_externa', 'modalidade', 'ordem', 'ativo')
+    ordering = ('ordem',)
+
+
+class ModuloNestedInline(nested_admin.NestedStackedInline):
     model = Modulo
     extra = 0
     can_delete = True
     fields = ('titulo', 'descricao', 'ordem', 'ativo')
     ordering = ('ordem',)
+    inlines = [MaterialNestedInline]
 
 
 @admin.register(Curso)
-class CursoAdmin(admin.ModelAdmin):
+class CursoAdmin(nested_admin.NestedModelAdmin):
     form = CursoAdminForm
-    inlines = [VideoInline, ModuloInline]
+    inlines = [VideoNestedInline, ModuloNestedInline]
     change_list_template = 'admin/core/curso/change_list.html'
     list_display = ('titulo', 'tipo', 'ambiente', 'status', 'is_gratuito', 'is_recomendado', 'video_display', 'created_at')
     list_filter = ('ambiente',)
@@ -1302,6 +1338,81 @@ class ComentarioAdmin(admin.ModelAdmin):
     @admin.display(description='Comentário')
     def texto_resumido(self, obj):
         return obj.texto[:50]
+
+
+class AlternativaInline(admin.TabularInline):
+    model = Alternativa
+    extra = 2
+    fields = ('texto', 'correta', 'ordem')
+    ordering = ('ordem',)
+
+
+class PerguntaInline(admin.StackedInline):
+    model = Pergunta
+    extra = 0
+    can_delete = True
+    fields = ('enunciado', 'ordem')
+    ordering = ('ordem',)
+    show_change_link = True
+
+
+@admin.register(Quiz)
+class QuizAdmin(admin.ModelAdmin):
+    inlines = [PerguntaInline]
+    list_display = ('titulo', 'tipo_display', 'video', 'curso', 'limite_perguntas', 'nota_minima', 'ativo', 'total_perguntas_count')
+    list_filter = ('ativo', 'curso', 'video')
+    search_fields = ('titulo', 'descricao')
+    list_editable = ('ativo',)
+
+    @admin.display(description='Tipo')
+    def tipo_display(self, obj):
+        if obj.curso:
+            return f'Prova Final — {obj.curso.titulo}'
+        if obj.video:
+            return f'Pós-vídeo — {obj.video.titulo}'
+        return '—'
+
+    @admin.display(description='Qtd. Perguntas')
+    def total_perguntas_count(self, obj):
+        return obj.perguntas.count()
+
+
+@admin.register(Pergunta)
+class PerguntaAdmin(admin.ModelAdmin):
+    inlines = [AlternativaInline]
+    list_display = ('id', 'quiz', 'enunciado_resumido', 'ordem', 'alternativas_count')
+    list_filter = ('quiz',)
+    search_fields = ('enunciado',)
+    ordering = ('quiz', 'ordem')
+
+    @admin.display(description='Enunciado')
+    def enunciado_resumido(self, obj):
+        return obj.enunciado[:80]
+
+    @admin.display(description='Alternativas')
+    def alternativas_count(self, obj):
+        return obj.alternativas.count()
+
+
+@admin.register(Alternativa)
+class AlternativaAdmin(admin.ModelAdmin):
+    list_display = ('texto', 'pergunta', 'correta', 'ordem')
+    list_filter = ('correta',)
+    search_fields = ('texto',)
+    list_editable = ('correta', 'ordem')
+
+
+@admin.register(QuizResultado)
+class QuizResultadoAdmin(admin.ModelAdmin):
+    list_display = ('usuario', 'quiz', 'nota_percent', 'acertos', 'total', 'aprovado', 'tentado_em')
+    list_filter = ('aprovado', 'quiz')
+    search_fields = ('usuario__username', 'quiz__titulo')
+    readonly_fields = ('quiz', 'usuario', 'nota', 'acertos', 'total', 'aprovado', 'respostas', 'tentado_em')
+    date_hierarchy = 'tentado_em'
+
+    @admin.display(description='Nota')
+    def nota_percent(self, obj):
+        return f'{obj.nota:.0%}'
 
 
 

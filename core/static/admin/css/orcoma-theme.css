@@ -100,12 +100,12 @@ html, body {
 }
 
 a:link, a:visited {
-  color: #3d1e0d;
+  color: #2B1810;
   text-decoration: none;
   transition: color 0.2s;
 }
 a:hover {
-  color: #3d1e0d;
+  color: #2B1810;
   text-decoration: none;
 }
 
@@ -172,7 +172,7 @@ a:hover {
   font-family: var(--font-display);
   font-size: 22px;
   font-weight: 600;
-  color: #191919;
+  color: #2B1810;
   margin-bottom: 20px;
 }
 
@@ -180,12 +180,12 @@ a:hover {
 div.breadcrumbs {
   background: var(--bg-surface-2);
   border-bottom: 1px solid var(--border-color);
-  color: #191919;
+  color: var(--text-secondary);
   padding: 10px 30px;
   font-size: 13px;
 }
 div.breadcrumbs a {
-  color: #3d1e0d;
+  color: var(--text-primary);
 }
 
 /* Módulos / Cards */
@@ -367,12 +367,12 @@ input:focus, textarea:focus, select:focus {
 
 /* Paginação */
 .paginator {
-  color: #191919;
+  color: #2B1810;
   font-size: 13px;
   padding: 15px 0;
 }
 .paginator a {
-  color: #3d1e0d;
+  color: #2B1810;
 }
 .paginator .this-page {
   background: var(--accent-blue);
@@ -384,7 +384,7 @@ input:focus, textarea:focus, select:focus {
 
 /* Links de ação nos resultados */
 .action-counter {
-  color: #191919;
+  color: #2B1810;
 }
 
 /* Dashboard */
@@ -432,7 +432,7 @@ input:focus, textarea:focus, select:focus {
 .admin-footer {
   text-align: center;
   padding: 20px;
-  color: var(--text-muted);
+  color: #2B1810;
   font-size: 12px;
   border-top: 1px solid var(--border-color);
   margin-top: 30px;
@@ -444,23 +444,163 @@ input:focus, textarea:focus, select:focus {
   font-size: 12px;
 }
 
-/* Inline groups */
+/* Inline groups — fundo claro areia com texto branco */
 .inline-group {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
+  background: #F0C888;
+  border: 1px solid #D9A05C;
   border-radius: var(--radius-lg);
   overflow: hidden;
   max-width: 900px;
+  color: #FFFFFF;
 }
 
 .inline-group h2 {
-  background: var(--bg-surface);
-  color: var(--text-primary);
+  background: #E8B167;
+  color: #FFFFFF;
   font-family: var(--font-display);
   font-size: 15px;
   padding: 12px 16px;
   margin: 0;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid #D9A05C;
+}
+
+.inline-group caption {
+  color: #FFFFFF;
+}
+
+.inline-group label,
+.inline-group .aligned label,
+.inline-group .fieldBox label {
+  color: #FFFFFF;
+}
+
+.inline-group .help,
+.inline-group p.help,
+.inline-group .timezonewarning {
+  color: #FFFFFF;
+}
+
+.inline-group input,
+.inline-group textarea,
+.inline-group select {
+  background: #D9A05C;
+  border: 1px solid #b8894c;
+  color: #FFFFFF;
+}
+
+.inline-group input::placeholder,
+.inline-group textarea::placeholder {
+  color: #FFFFFF;
+  opacity: 0.6;
+}
+
+.inline-group input:focus,
+.inline-group textarea:focus,
+.inline-group select:focus {
+  border-color: var(--accent-orange);
+}
+
+.inline-group .form-row {
+  border-bottom: 1px solid #D9A05C;
+}
+
+.inline-group td,
+.inline-group th {
+  color: #FFFFFF;
+}
+
+.inline-group table th {
+  color: #FFFFFF;
+  background: #F0C888;
+}
+
+.inline-group .readonly {
+  color: #FFFFFF;
+}
+
+.inline-group .field-helper a,
+.inline-group .related-widget-wrapper-link {
+  color: #FFFFFF;
+}
+
+.inline-group .row1,
+.inline-group .row2 {
+  color: #FFFFFF;
+}
+
+/* Fieldset interno dos StackedInlines — tirar o fundo escuro do .module */
+.inline-group .module,
+.inline-group fieldset.module,
+.inline-group .inline-related .module {
+  background: #F0C888;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  margin: 0;
+}
+
+.inline-group .module h2,
+.inline-group fieldset.module h2 {
+  color: #FFFFFF;
+  background: #E8B167;
+}
+
+.inline-group .aligned .form-row {
+  padding: 12px 16px;
+  border-bottom: 1px solid #D9A05C;
+}
+
+.inline-group .aligned label {
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
+.inline-group ul.errorlist {
+  background: rgba(220, 38, 38, 0.12);
+  color: #b91c1c;
+}
+
+.inline-group .form-row.errors {
+  background: rgba(220, 38, 38, 0.06);
+}
+
+/* Rótulos de cada registro inline (h3) e controles */
+.inline-group h3 {
+  color: #FFFFFF;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0;
+  padding: 10px 16px;
+  border-bottom: 1px solid #D9A05C;
+  background: rgba(232, 177, 103, 0.35);
+}
+
+.inline-group h3 a,
+.inline-group .inline_label a,
+.inline-group .inlinechangelink,
+.inline-group .inlineviewlink {
+  color: #FFFFFF;
+}
+
+.inline-group .inline_label,
+.inline-group .delete label,
+.inline-group .delete a {
+  color: #FFFFFF;
+}
+
+.inline-group .add-row {
+  background: rgba(232, 177, 103, 0.25);
+  border-top: 1px solid #D9A05C;
+}
+
+.inline-group .add-row a {
+  color: #FFFFFF;
+}
+
+.inline-group a:link,
+.inline-group a:visited {
+  color: #FFFFFF;
 }
 
 /* Selector (many-to-many widget) */
@@ -898,7 +1038,7 @@ input:focus, textarea:focus, select:focus {
 .admin-footer {
   text-align: center;
   padding: 16px 24px;
-  color: #512614;
+  color: #2B1810;
   font-size: 12px;
   border-top: 1px solid rgba(81, 38, 20, 0.15);
 }
@@ -908,7 +1048,7 @@ input:focus, textarea:focus, select:focus {
   font-family: var(--font-display);
   font-size: 22px;
   font-weight: 600;
-  color: #512614;
+  color: #2B1810;
   margin: 0 0 20px 0;
 }
 
@@ -1002,7 +1142,7 @@ body:not(.popup) #header {
   white-space: normal;
   word-wrap: break-word;
   font-size: 12px;
-  color: var(--text-secondary);
+  color: #FFFFFF;
 }
 
 .inline-group table td input[type="text"],
@@ -1055,4 +1195,20 @@ body:not(.popup) #header {
   filter: brightness(0) invert(1);
   width: 14px;
   height: 14px;
+}
+
+/* Ícones dos related-widget sobre o fundo claro dos inlines */
+.inline-group .related-widget-wrapper .related-widget-wrapper-link img {
+  filter: brightness(0) invert(0);
+  width: 14px;
+  height: 14px;
+  opacity: 0.7;
+}
+
+/* ============================================
+   CURSO ADMIN — LABEL DO CAMPO arquivo (vídeo/material)
+   ============================================ */
+.inline-group .form-row.field-arquivo label,
+.inline-group .aligned .form-row.field-arquivo label {
+  color: #FFFFFF !important;
 }

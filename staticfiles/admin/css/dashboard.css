@@ -16,7 +16,7 @@
   align-items: center;
   justify-content: center;
   padding: 100px 20px;
-  color: #7a4a26;
+  color: #2B1810;
   gap: 20px;
 }
 
@@ -39,6 +39,7 @@
   font-size: 14px;
   font-weight: 500;
   letter-spacing: 0.3px;
+  color: #2B1810;
   animation: pulse-text 1.5s ease-in-out infinite;
 }
 
@@ -59,7 +60,7 @@
   font-family: var(--font-display);
   font-size: 30px;
   font-weight: 700;
-  color: #512614;
+  color: #2B1810;
   text-align: center;
   margin: 0 0 24px 0;
   line-height: 1.2;
@@ -70,7 +71,7 @@
   display: block;
   font-size: 14px;
   font-weight: 400;
-  color: #7a4a26;
+  color: #2B1810;
   margin-top: 6px;
   letter-spacing: 0;
 }
