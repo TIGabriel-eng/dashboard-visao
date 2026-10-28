@@ -19,3 +19,5 @@ django-apscheduler>=0.7.0
 argon2-cffi
 requests
 django-nested-admin>=4.1.6
+
+resend==2.36.0

@@ -57,6 +57,14 @@ class IsStaffOrReadOnly(permissions.BasePermission):
 from rest_framework.pagination import PageNumberPagination
 
 
+def _filtro_ambiente(valor):
+    # Aceita o nome da academy ou o id; comparar o nome com o id quebra (ValueError) quando não é numérico
+    filtro = Q(ambiente__nome__iexact=valor)
+    if str(valor).isdigit():
+        filtro |= Q(ambiente__id=valor)
+    return filtro
+
+
 class CursoPagination(PageNumberPagination):
     page_size = 20
     page_size_query_param = 'page_size'
@@ -146,18 +154,14 @@ class CursoViewSet(viewsets.ModelViewSet):
 
         ambiente = self.request.query_params.get('ambiente')
         if ambiente:
-            qs = qs.filter(
-                Q(ambiente__nome__iexact=ambiente) | Q(ambiente__id=ambiente)
-            )
+            qs = qs.filter(_filtro_ambiente(ambiente))
 
         status_param = self.request.query_params.get('status')
         if status_param and user.is_authenticated and user.is_staff:
             qs = Curso.objects.select_related('ambiente').prefetch_related('academias_extras')
             qs = qs.filter(status=status_param)
             if ambiente:
-                qs = qs.filter(
-                    Q(ambiente__nome__iexact=ambiente) | Q(ambiente__id=ambiente)
-                )
+                qs = qs.filter(_filtro_ambiente(ambiente))
 
         return qs.distinct()
 
@@ -1691,3 +1695,51 @@ def onedrive_embed_url(request):
 
     embed_url = _build_onedrive_embed(final_url)
     return Response({'embed_url': embed_url})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def enviar_email_suporte_view(request):
+    import os
+    from django.utils.html import strip_tags
+    from core.services.email import enviar_email_suporte
+
+    EXT_PERMITIDAS = {'.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.csv',
+                      '.png', '.jpg', '.jpeg', '.gif', '.webp'}
+    MAX_ARQUIVOS = 5
+    MAX_POR_ARQUIVO = 5 * 1024 * 1024
+    MAX_TOTAL = 10 * 1024 * 1024
+
+    assunto = (request.data.get('assunto') or '').strip()
+    mensagem = (request.data.get('mensagem') or '').strip()
+    if not assunto or not strip_tags(mensagem).strip():
+        return Response({'detail': 'Preencha o assunto e a mensagem.'}, status=400)
+    if len(assunto) > 150 or len(mensagem) > 20000:
+        return Response({'detail': 'Texto muito longo.'}, status=400)
+
+    arquivos = request.FILES.getlist('anexos')
+    if len(arquivos) > MAX_ARQUIVOS:
+        return Response({'detail': f'Envie no máximo {MAX_ARQUIVOS} anexos.'}, status=400)
+    anexos, total = [], 0
+    for f in arquivos:
+        ext = os.path.splitext(f.name)[1].lower()
+        if ext not in EXT_PERMITIDAS:
+            return Response({'detail': f'Tipo de arquivo não permitido: {f.name}'}, status=400)
+        if f.size > MAX_POR_ARQUIVO:
+            return Response({'detail': f'O arquivo {f.name} passa de 5 MB.'}, status=400)
+        total += f.size
+        if total > MAX_TOTAL:
+            return Response({'detail': 'O total dos anexos passa de 10 MB.'}, status=400)
+        anexos.append((os.path.basename(f.name), f.read()))
+
+    # Limite simples por usuário: 5 mensagens por hora
+    chave = f'suporte_envios_{request.user.id}'
+    envios = cache.get(chave, 0)
+    if envios >= 5:
+        return Response({'detail': 'Você atingiu o limite de mensagens por hora. Tente novamente mais tarde.'}, status=429)
+
+    if not enviar_email_suporte(request.user, assunto, mensagem, anexos):
+        return Response({'detail': 'Não foi possível enviar sua mensagem agora. Tente novamente em instantes.'}, status=502)
+
+    cache.set(chave, envios + 1, 3600)
+    return Response({'detail': 'Mensagem enviada com sucesso!'})

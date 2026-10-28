@@ -34,6 +34,7 @@ urlpatterns = [
     path('comentarios/<int:pk>/curtir/', views.curtir_comentario, name='comentario-curtir'),
     path('certificados/', views.listar_certificados, name='listar-certificados'),
     path('certificados/<int:pk>/download/', views.download_certificado, name='download-certificado'),
+    path('suporte/enviar/', views.enviar_email_suporte_view, name='suporte-enviar'),
     path('busca/', views.busca, name='busca'),
     path('user-stats/', views.user_stats, name='user-stats'),
     path('logout/', views.logout_view, name='logout'),
